@@ -14,6 +14,9 @@
 [![Build Status](https://github.com/rime/squirrel/actions/workflows/commit-ci.yml/badge.svg)](https://github.com/rime/squirrel/actions/workflows)
 [![GitHub Tag](https://img.shields.io/github/tag/rime/squirrel.svg)](https://github.com/rime/squirrel)
 
+> 注：鼠鬚管本體僅支持 macOS。Linux 用戶請使用本倉庫 [`rime-config/`](rime-config/) 目錄中的
+> 用戶配置，配合【中州韻】（fcitx5-rime / ibus-rime）部署，見 [rime-config/README.md](rime-config/README.md)。
+
 式恕堂 版權所無
 
 授權條款：[GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html)
