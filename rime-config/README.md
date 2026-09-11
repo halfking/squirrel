@@ -8,19 +8,29 @@ macOS（鼠鬚管 / Squirrel）、Windows（小狼毫 / Weasel 0.17.4）、Linux
 
 - `default.custom.yaml` — 全局用户配置补丁：
   - 启用输入方案：`wubi_pinyin`（五笔·拼音混输，默认）、`luna_pinyin_simp`（朙月拼音·简化字）、`wubi86`（五笔86）；
-  - **中英文切换改为仅右 Shift**（`Shift_R: commit_code`），左 Shift 不再触发切换（`Shift_L: noop`）。
+  - **中英文切换：左 Shift 快速切换**（打字中途按下则编码原样上屏），右 Shift 同
+    （`Shift_L` / `Shift_R` 均为 `commit_code`）。
 - `install-linux.sh` — Linux（fcitx5-rime）一键部署脚本，见下文。
+- `install-windows.sh` — Windows（小狼毫 / Weasel，Parallels 虚机）一键部署脚本，见下文。
 
 ## 应用方法（Windows / 小狼毫）
 
-1. 将本文件复制到 Rime 用户目录（默认 `%APPDATA%\Rime`）：
+本机的 Windows 11（Parallels 虚机）已安装小狼毫 Weasel 0.17.4，
+Rime 用户目录为 `%APPDATA%\Rime`（即 `C:\<用户>\AppData\Roaming\Rime`）。
 
-   ```bat
-   copy rime-config\default.custom.yaml "%APPDATA%\Rime\default.custom.yaml"
-   ```
+推荐：在 Mac 上运行 `install-windows.sh` 一键推送并重新部署（经 Parallels 共享文件夹
+`\\Mac\Home` 复制文件，用计划任务以登录用户身份触发 WeaselDeployer）：
 
-2. 重新部署：任务栏托盘右键小狼毫图标 →「重新部署」，
-   或运行 `"C:\Program Files\Rime\weasel-0.17.4\WeaselDeployer.exe" /deploy`。
+```bash
+./install-windows.sh [虚机名称] [虚机内用户名]    # 默认 "Windows 11"、xutaohuang
+```
+
+手动等价操作：
+
+```bat
+copy rime-config\default.custom.yaml "%APPDATA%\Rime\default.custom.yaml"
+"C:\Program Files\Rime\weasel-0.17.4\WeaselDeployer.exe" /deploy
+```
 
 ## 应用方法（macOS / 鼠鬚管）
 
@@ -64,5 +74,5 @@ fcitx5-remote -n   # 应输出 rime
 ## 效果
 
 - 按 **F4** / **Ctrl+`** 呼出方案选单，可在五笔86 / 五笔·拼音 / 简体拼音之间切换；
-- 按 **右 Shift** 在中文 / 英文之间切换（若打字中途按右 Shift，已输入的编码以字母原样上屏）；
-- 左 Shift 不再切换中英文。
+- 按 **左 Shift** 或 **右 Shift** 在中文 / 英文之间切换
+  （打字中途按下时，已输入的编码以字母原样上屏）。

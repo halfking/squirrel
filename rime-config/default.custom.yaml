@@ -4,6 +4,6 @@ patch:
     - schema: wubi_pinyin
     - schema: luna_pinyin_simp
     - schema: wubi86
-  # 中英文切换：仅右 Shift 切换；左 Shift 不再切换
-  ascii_composer/switch_key/Shift_L: noop
+  # 中英文切换：左 Shift 快速切换（打字中途按下则编码原样上屏），右 Shift 同
+  ascii_composer/switch_key/Shift_L: commit_code
   ascii_composer/switch_key/Shift_R: commit_code
