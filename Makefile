@@ -77,6 +77,7 @@ opencc-data:
 copy-plum-data:
 	mkdir -p data/plum
 	cp $(PLUM_DATA_OUTPUT) data/plum/
+	bash scripts/patch-default-switch-key.sh data/plum/default.yaml
 	cp $(RIME_PACKAGE_INSTALLER) bin/
 
 copy-opencc-data:

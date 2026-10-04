@@ -10,6 +10,11 @@ macOS（鼠鬚管 / Squirrel）、Windows（小狼毫 / Weasel 0.17.4）、Linux
   - 启用输入方案：`wubi_pinyin`（五笔·拼音混输，默认）、`luna_pinyin_simp`（朙月拼音·简化字）、`wubi86`（五笔86）；
   - **中英文切换：左 Shift 快速切换**（打字中途按下则编码原样上屏），右 Shift 同
     （`Shift_L` / `Shift_R` 均为 `commit_code`）。
+
+> 左 Shift 切换同时是**引擎出厂默认**：`data/plum/default.yaml` 里
+> `ascii_composer/switch_key/Shift_L` 已经是 `commit_code`，所以即使没有这个补丁
+> （用户删掉了 `default.custom.yaml`）左 Shift 依然切换中英文。补丁保留是为了让
+> 右 Shift 也变成切换键（引擎默认的 `commit_text` 是"原样上屏"，不是切换）。
 - `install-linux.sh` — Linux（fcitx5-rime）一键部署脚本，见下文。
 - `install-windows.sh` — Windows（小狼毫 / Weasel，Parallels 虚机）一键部署脚本，见下文。
 

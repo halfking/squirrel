@@ -1,0 +1,44 @@
+{
+  "_comment": "plum preset manifest consumed by the Squirrel setup programs on all platforms. Files are fetched from the same upstream repos that `plum` uses (rime-install <package>), with mirror fallbacks for networks where raw.githubusercontent.com is unreachable.",
+  "mirrors": [
+    "https://cdn.jsdelivr.net/gh/{repo}@{ref}/{file}",
+    "https://gh-proxy.com/https://raw.githubusercontent.com/{repo}/{ref}/{file}",
+    "https://raw.githubusercontent.com/{repo}/{ref}/{file}",
+    "https://gitcode.com/gh_mirrors/{mirror}/raw/{ref}/{file}"
+  ],
+  "packages": [
+    {
+      "name": "wubi",
+      "repo": "rime/rime-wubi",
+      "mirror": "ri/rime-wubi",
+      "ref": "master",
+      "description": "五笔字型 86 版 + 五笔·拼音混输",
+      "files": [
+        "wubi86.schema.yaml",
+        "wubi86.dict.yaml",
+        "wubi_pinyin.schema.yaml"
+      ]
+    },
+    {
+      "name": "pinyin-simp",
+      "repo": "rime/rime-pinyin-simp",
+      "mirror": "ri/rime-pinyin-simp",
+      "ref": "master",
+      "description": "拼音（简体）基础词典，wubi_pinyin 依赖",
+      "files": [
+        "pinyin_simp.schema.yaml",
+        "pinyin_simp.dict.yaml"
+      ]
+    },
+    {
+      "name": "luna-pinyin",
+      "repo": "rime/rime-luna-pinyin",
+      "mirror": "ri/rime-luna-pinyin",
+      "ref": "master",
+      "description": "朙月拼音·简化字",
+      "files": [
+        "luna_pinyin_simp.schema.yaml"
+      ]
+    }
+  ]
+}
