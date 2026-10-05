@@ -21,10 +21,12 @@ if [ "$REL_DIR" = "$SCRIPT_DIR" ]; then
   exit 1
 fi
 SRC_UNC="\\\\Mac\\Home\\${REL_DIR//\//\\}\\default.custom.yaml"
+SRC_SCHEMA_UNC="\\\\Mac\\Home\\${REL_DIR//\//\\}\\wubi_pinyin.schema.yaml"
 
-echo "==> 推送 default.custom.yaml 到 $VM:$GUEST_RIME_DIR"
+echo "==> 推送 default.custom.yaml + wubi_pinyin.schema.yaml 到 $VM:$GUEST_RIME_DIR"
 prlctl exec "$VM" cmd.exe /c "if not exist \"$GUEST_RIME_DIR\" mkdir \"$GUEST_RIME_DIR\""
 prlctl exec "$VM" cmd.exe /c "copy /y \"$SRC_UNC\" \"$GUEST_RIME_DIR\\default.custom.yaml\" >nul && echo copied"
+prlctl exec "$VM" cmd.exe /c "copy /y \"$SRC_SCHEMA_UNC\" \"$GUEST_RIME_DIR\\wubi_pinyin.schema.yaml\" >nul && echo copied"
 
 echo "==> 以虚机用户 $GUEST_USER 触发小狼毫重新部署"
 # 小狼毫读取登录用户的注册表，WeaselDeployer 必须在用户会话中运行，

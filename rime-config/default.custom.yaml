@@ -1,9 +1,16 @@
-# 五笔·拼音混输 + 朙月拼音，开源无广告
+# Rime 用户配置：五笔·拼音混输为默认方案 + 左 Shift 中英切换
+#
+# ⚠️ 混合输入 = wubi_pinyin（五笔·拼音）这一个方案，五笔码和全拼直接混着打。
+#    不要把 wubi86（纯五笔）排首位：在纯五笔下打拼音会得到五笔乱拼的错词
+#    （如 nihao →「悄虚」），那就是"拼音不行"的原因。
 patch:
   schema_list:
+    # 1) 五笔·拼音 —— 混输默认方案：wq→你（五笔）、nihao→你好（全拼）直接出候选
     - schema: wubi_pinyin
+    # 2) 朙月拼音·简化字 —— 备用纯拼音
     - schema: luna_pinyin_simp
+    # 3) 五笔86 —— 备用纯五笔，F4 / Control+` 呼出选单临时切换
     - schema: wubi86
-  # 中英文切换：左 Shift 快速切换（打字中途按下则编码原样上屏），右 Shift 同
+  # 中英文切换：轻点左 Shift 切换（打字中途按下则当前编码原样上屏）
   ascii_composer/switch_key/Shift_L: commit_code
   ascii_composer/switch_key/Shift_R: commit_code

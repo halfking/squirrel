@@ -8,9 +8,10 @@ HOST="${1:-omarchy@10.211.55.12}"
 REMOTE_DIR="/home/omarchy/.local/share/fcitx5/rime"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "==> 推送 default.custom.yaml 到 $HOST:$REMOTE_DIR/"
+echo "==> 推送 default.custom.yaml + wubi_pinyin.schema.yaml 到 $HOST:$REMOTE_DIR/"
 ssh "$HOST" "mkdir -p '$REMOTE_DIR'"
 scp -q "$SCRIPT_DIR/default.custom.yaml" "$HOST:$REMOTE_DIR/default.custom.yaml"
+scp -q "$SCRIPT_DIR/wubi_pinyin.schema.yaml" "$HOST:$REMOTE_DIR/wubi_pinyin.schema.yaml"
 
 echo "==> 远程编译 Rime 配置并重启 fcitx5"
 ssh "$HOST" bash -s -- "$REMOTE_DIR" <<'REMOTE'

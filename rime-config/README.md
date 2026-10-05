@@ -7,9 +7,23 @@ macOS（鼠鬚管 / Squirrel）、Windows（小狼毫 / Weasel 0.17.4）、Linux
 ## 内容
 
 - `default.custom.yaml` — 全局用户配置补丁：
-  - 启用输入方案：`wubi_pinyin`（五笔·拼音混输，默认）、`luna_pinyin_simp`（朙月拼音·简化字）、`wubi86`（五笔86）；
+  - 启用输入方案：`wubi_pinyin`（五笔·拼音混输，**默认**）、`luna_pinyin_simp`（朙月拼音·简化字）、`wubi86`（五笔86）；
   - **中英文切换：左 Shift 快速切换**（打字中途按下则编码原样上屏），右 Shift 同
     （`Shift_L` / `Shift_R` 均为 `commit_code`）。
+- `wubi_pinyin.schema.yaml` — 升级版「五笔·拼音」混输方案（覆盖上游同名方案）：
+  - 五笔码与全拼**同一个方案内直接混打**，无需切换；
+  - 拼音改用 `luna_pinyin` 全词库 + `script_translator`（上游用袖珍拼音反查，
+    词库小、无整句），支持词组与整句；
+  - 默认**简体输出**（`simplifier` + t2s，同 `luna_pinyin_simp` 的机制）；
+  - 关闭五笔侧 `enable_sentence`：混输时字母串会被五笔造句引擎拼成乱词
+    （`nihao`→「悄虚」）并排到拼音整句之前；
+  - 保留 `` ` `` 前缀拼音反查（袖珍拼音词库）。
+
+> **混输的关键认知**：`wubi86` 是纯五笔——排到 schema_list 首位时，打拼音会
+> 被五笔引擎拼成乱词上屏（如 `nihao`→「悄虚」），表现就是"拼音不行"。
+> 混合输入 = 默认用 `wubi_pinyin` 这**一个**方案即可；Rime 还会记住 F4 选单里
+> 最后手选的方案（`previously_selected_schema`），若发现拼音打不出，先用 F4
+> 切回「五笔·拼音」。
 
 > 左 Shift 切换同时是**引擎出厂默认**：`data/plum/default.yaml` 里
 > `ascii_composer/switch_key/Shift_L` 已经是 `commit_code`，所以即使没有这个补丁
@@ -39,8 +53,9 @@ copy rime-config\default.custom.yaml "%APPDATA%\Rime\default.custom.yaml"
 
 ## 应用方法（macOS / 鼠鬚管）
 
-把 `default.custom.yaml` 放入 Rime 用户目录 `~/Library/Rime/`，
-然后点击菜单栏鼠鬚管图标 →「重新部署」。
+把 `default.custom.yaml` 与 `wubi_pinyin.schema.yaml` 放入 Rime 用户目录
+`~/Library/Rime/`，然后点击菜单栏鼠鬚管图标 →「重新部署」。
+验证：`bash tools/ime-healthcheck.sh`（仓库根目录）。
 
 ## 应用方法（Linux / fcitx5-rime）
 
@@ -78,6 +93,10 @@ fcitx5-remote -n   # 应输出 rime
 
 ## 效果
 
-- 按 **F4** / **Ctrl+`** 呼出方案选单，可在五笔86 / 五笔·拼音 / 简体拼音之间切换；
+- 默认方案「五笔·拼音」：**五笔码与全拼直接混打**——`wq`→你、`vb`→好、
+  `wqvb`→你好（五笔），`nihao`→你好、`shiweishuji`→市委书记（拼音整句），均简体输出；
+- 按 **F4** / **Ctrl+`** 呼出方案选单，可在五笔·拼音 / 简体拼音 / 五笔86之间临时切换
+  （Rime 会记住最后选择，新会话沿用）；
 - 按 **左 Shift** 或 **右 Shift** 在中文 / 英文之间切换
-  （打字中途按下时，已输入的编码以字母原样上屏）。
+  （打字中途按下时，已输入的编码以字母原样上屏）；
+- `` ` `` 前缀反查拼音（袖珍拼音词库），如 `` `nihao ``。

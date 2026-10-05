@@ -1,0 +1,112 @@
+# Rime schema — 五笔·拼音 混合输入（升级版）
+# encoding: utf-8
+#
+# 改造说明（相对上游 rime-wubi 的 wubi_pinyin）：
+#   上游把拼音混输交给 reverse_lookup_translator + 袖珍拼音（pinyin_simp）词库，
+#   词库小、无整句。本版改为 script_translator + luna_pinyin 全词库：
+#   - 直接敲五笔码：table_translator（wubi86 码表）出候选；
+#   - 直接敲全拼：script_translator（luna_pinyin）出候选，支持词组与整句；
+#   - ` 前缀反查保留（pinyin_simp）。
+#   并删除 abc_segmentor 的 reverse_lookup 附加标签，避免拼音候选重复。
+
+schema:
+  schema_id: wubi_pinyin
+  name: "五笔·拼音"
+  version: "1.0"
+  author:
+    - 發明人 王永民先生
+  description: |
+    五筆字型86版＋漢語拼音混合輸入。
+    敲五笔码或全拼均可直接出候选，无需切换。
+    碼表源自 ibus-table
+  dependencies:
+    - luna_pinyin
+    - pinyin_simp
+
+switches:
+  - name: ascii_mode
+    reset: 0
+    states: [ 中文, 西文 ]
+  - name: full_shape
+    states: [ 半角, 全角 ]
+  - options:
+      - zh_hant
+      - zh_hans
+    reset: 1
+  - name: extended_charset
+    states: [ 常用, 增廣 ]
+  - name: ascii_punct
+    states: [ 。，, ．， ]
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - table_translator@wubi
+    - script_translator@pinyin
+    - reverse_lookup_translator
+  filters:
+    - simplifier@zh_hans
+    - uniquifier
+
+speller:
+  delimiter: " ;'"
+  #max_code_length: 4  # 四碼頂字上屏
+
+wubi:
+  dictionary: wubi86
+  prism: wubi_pinyin
+  enable_charset_filter: true
+  # 造句关闭：混输时字母串会被五笔引擎拼成乱词句（nihao→「悄虚」），
+  # 排到拼音整句之前；精确码表匹配不受影响。
+  enable_sentence: false
+  enable_encoder: true
+  encode_commit_history: true
+  max_phrase_length: 4
+  disable_user_dict_for_patterns:
+    - "^z.*$"
+
+pinyin:
+  dictionary: luna_pinyin
+  prism: luna_pinyin
+
+zh_hans:
+  option_name: zh_hans
+  opencc_config: t2s.json
+  tips: none
+  excluded_types: [ reverse_lookup ]
+
+reverse_lookup:
+  dictionary: pinyin_simp
+  prefix: "`"
+  suffix: "'"
+  tips: 〔拼音〕
+  preedit_format:
+    - xform/([nl])v/$1ü/
+    - xform/([nl])ue/$1üe/
+    - xform/([jqxy])v/$1u/
+
+punctuator:
+  import_preset: default
+
+key_binder:
+  import_preset: default
+
+recognizer:
+  import_preset: default
+  patterns:
+    reverse_lookup: "`[a-z]*'?$"
