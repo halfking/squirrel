@@ -15,9 +15,9 @@ struct SquirrelApp {
   } else {
     try! FileManager.default.url(for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("Rime", isDirectory: true)
   }
-  static let appDir = "/Library/Input Methods/Squirrel.app".withCString { dir in
-    URL(fileURLWithFileSystemRepresentation: dir, isDirectory: false, relativeTo: nil)
-  }
+  // 用 Bundle.main 自身定位 app 包，而不是硬编码 /Library/Input Methods，
+  // 这样输入法装在 ~/Library/Input Methods（无需 sudo）时注册仍指向正确路径。
+  static let appDir = Bundle.main.bundleURL
   static let logDir = FileManager.default.temporaryDirectory.appending(component: "rime.squirrel", directoryHint: .isDirectory)
 
   // swiftlint:disable:next cyclomatic_complexity
