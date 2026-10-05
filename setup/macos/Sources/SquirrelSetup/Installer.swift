@@ -355,7 +355,9 @@ final class Installer {
   }
 
   private func dirSize(_ path: String) -> String {
-    let output = (try? Shell.sh("du -sh '\(shellQuote(path))' 2>/dev/null | awk '{print $1}'"))?
+    // shellQuote 已带单引号；外面再加一层会变成 ''path''，路径里的空格
+    // （/Library/Input Methods）会被 shell 拆词。
+    let output = (try? Shell.sh("du -sh \(shellQuote(path)) 2>/dev/null | awk '{print $1}'"))?
       .trimmingCharacters(in: .whitespacesAndNewlines) ?? "?"
     return output
   }
@@ -373,9 +375,14 @@ final class Installer {
   /// differ in file size even when they are the same build, and a size- or
   /// whole-bundle comparison would reinstall the engine on every run.
   private func engineMatchesPayload(_ payload: String) -> Bool {
-    guard let installedVersion = squirrelVersion(at: Path.squirrelInstalled),
-          let payloadVersion = squirrelVersion(at: payload),
-          installedVersion == payloadVersion else { return false }
+    let installedVersion = squirrelVersion(at: Path.squirrelInstalled)
+    let payloadVersion = squirrelVersion(at: payload)
+    // 两边都取不到版本（例如 build-user.sh 拷出的骨架 Info.plist 没有版本号）
+    // 时，不能因"版本未知"判为不一致——那会让每次运行都重装引擎、弹一次
+    // 管理员授权框。版本只在至少一方可读时才参与比较，其余交给下面的
+    // SharedSupport/default.yaml 内容比对。
+    if installedVersion != nil || payloadVersion != nil,
+       installedVersion != payloadVersion { return false }
 
     let relative = "Contents/SharedSupport/default.yaml"
     let installedConfig = URL(fileURLWithPath: Path.squirrelInstalled).appendingPathComponent(relative)

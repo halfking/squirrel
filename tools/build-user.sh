@@ -65,6 +65,18 @@ cp -R "$APP" "$STAGE"
 cp "$BIN/Contents/MacOS/Squirrel" "$STAGE/Contents/MacOS/Squirrel"
 chmod +x "$STAGE/Contents/MacOS/Squirrel"
 
+# 3.5) 补版本号：骨架的 Info.plist 没有 CFBundleShortVersionString，
+#      安装程序（setup/）的引擎一致比对取不到版本时会退化为"永远不一致"，
+#      导致每次重跑都重装引擎、弹一次管理员授权框。
+VERSION="${SQUIRREL_VERSION:-$(grep -m1 'CURRENT_PROJECT_VERSION' "$ROOT/Squirrel.xcodeproj/project.pbxproj" \
+  | sed -E 's/.*= *([0-9][^;]*);.*/\1/' | tr -d ' ')}"
+[ -n "$VERSION" ] || VERSION="0.0.0"
+for KEY in CFBundleShortVersionString CFBundleVersion; do
+  /usr/libexec/PlistBuddy -c "Add :$KEY string $VERSION" "$STAGE/Contents/Info.plist" 2>/dev/null \
+    || /usr/libexec/PlistBuddy -c "Set :$KEY $VERSION" "$STAGE/Contents/Info.plist"
+done
+echo "版本号: $VERSION"
+
 # 4) 签名并校验封印
 echo "签名…"
 codesign --force --deep --sign - "$STAGE" >/dev/null 2>&1

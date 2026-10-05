@@ -178,8 +178,11 @@ static const char *packages_for(const char *manager) {
   if (!manager) return "";
   if (g_str_equal(manager, "pacman"))
     return "fcitx5-rime rime-wubi rime-luna-pinyin";
+  /* Ubuntu noble 没有fcitx5-rime-extra/fcitx5-chinese-addons 也不被 rime 需要；
+   * 列出一个不存在的包会让整条apt-get 失败。librime-bin 提供
+   * rime_deployer（fcitx5-rime 不依赖它），第 5 步编译必须用到。 */
   if (g_str_equal(manager, "apt-get"))
-    return "fcitx5-rime fcitx5-rime-extra fcitx5-chinese-addons";
+    return "fcitx5-rime librime-bin";
   if (g_str_equal(manager, "dnf"))
     return "fcitx5-rime";
   if (g_str_equal(manager, "zypper"))
@@ -193,8 +196,14 @@ static char *install_command(const char *manager, const char *packages) {
   if (!manager || !*packages) return NULL;
   if (g_str_equal(manager, "pacman"))
     return g_strdup_printf("pacman -S --needed --noconfirm %s", packages);
+  /* Minimal/cloud images ship with empty apt indexes: fall back to
+   * `apt-get update` once when the direct install cannot locate packages. */
   if (g_str_equal(manager, "apt-get"))
-    return g_strdup_printf("DEBIAN_FRONTEND=noninteractive apt-get install -y %s", packages);
+    return g_strdup_printf(
+        "DEBIAN_FRONTEND=noninteractive apt-get install -y %s || "
+        "(DEBIAN_FRONTEND=noninteractive apt-get update -qq && "
+        "DEBIAN_FRONTEND=noninteractive apt-get install -y %s)",
+        packages, packages);
   if (g_str_equal(manager, "dnf"))
     return g_strdup_printf("dnf install -y %s", packages);
   if (g_str_equal(manager, "zypper"))
@@ -615,6 +624,14 @@ static void step_detect(Platform *platform) {
   log_line("包管理器：%s", platform->package_manager ? platform->package_manager : "未检测到");
   log_line("下载工具：%s", download_program() ? download_program() : "未检测到 curl/wget");
 
+  {
+    int deployer_code = 0;
+    char *out = run_capture("command -v rime_deployer >/dev/null 2>&1", &deployer_code);
+    g_free(out);
+    log_line("rime_deployer：%s",
+             deployer_code == 0 ? "已安装" : "未安装（安装引擎时随 librime-bin 提供）");
+  }
+
   if (network_available())
     log_ok("网络：可访问 plum 方案镜像（jsDelivr）");
   else
@@ -648,7 +665,13 @@ static void step_engine(Platform *platform) {
   int has_pkexec = 0;
   char *probe = run_capture("command -v pkexec >/dev/null 2>&1", &has_pkexec);
   g_free(probe);
-  char *command = g_strdup_printf("%s %s", has_pkexec ? "pkexec" : "sudo -A", inner);
+  /* pkexec 不解析 shell 语法，而 apt 命令带 DEBIAN_FRONTEND= 前缀，必须经
+   * sh -c 执行；没有 pkexec 时 sudo -A 需要 SUDO_ASKPASS，失败则退回交互式
+   * sudo（终端运行可输密码，桌面启动会得到明确报错）。2>&1 把包管理器的
+   * 报错收进日志窗口。inner 不含单引号，可直接嵌入。 */
+  char *command = has_pkexec
+      ? g_strdup_printf("pkexec sh -c '%s' 2>&1", inner)
+      : g_strdup_printf("sudo -A sh -c '%s' 2>&1 || sudo sh -c '%s' 2>&1", inner, inner);
   g_free(inner);
   log_line("执行：%s", command);
   log_line("需要管理员权限，请在弹出的授权窗口中确认…");
@@ -690,7 +713,10 @@ static void step_config(Platform *platform) {
     return;
   }
   if (existing) {
-    char *stamp = g_strdup_printf("%s.bak-%s", dest, "backup");
+    GDateTime *now = g_date_time_new_now_local();
+    char *stamp = g_strdup_printf("%s.bak-%s", dest,
+                                  g_date_time_format(now, "%Y%m%d-%H%M%S"));
+    g_date_time_unref(now);
     write_file(stamp, existing, existing_length);
     char *base = g_path_get_basename(stamp);
     log_line("已备份原配置 → %s", base);
@@ -805,7 +831,7 @@ static void step_deploy(Platform *platform) {
 
   log_line("运行 rime_deployer --build（编译词库，通常需要 5–30 秒）…");
   char *command = g_strdup_printf(
-      "cd '%s' && rime_deployer --build . '%s' .", platform->active_rime_dir, data_dir);
+      "cd '%s' && rime_deployer --build . '%s' . 2>&1", platform->active_rime_dir, data_dir);
   int code = 0;
   char *output = run_capture(command, &code);
   g_free(command);
@@ -842,6 +868,19 @@ static void step_deploy(Platform *platform) {
     log_warn("警告：未生成 build/default.yaml，部署可能未成功。");
   }
   g_free(built);
+
+  /* Ubuntu 等发行版默认输入法框架是 ibus，新装的 fcitx5-rime 不会自动生效；
+   * im-config 把会话框架切到 fcitx5，注销重登后即可用。用户已在 ibus-rime
+   * 上时不强行改配置。 */
+  if (!g_str_equal(platform->ime, "ibus")) {
+    int imconfig_code = 0;
+    char *out = run_capture(
+        "command -v im-config >/dev/null 2>&1 && im-config -n fcitx5 >/dev/null 2>&1",
+        &imconfig_code);
+    g_free(out);
+    if (imconfig_code == 0)
+      log_line("已将默认输入法框架切换为 fcitx5（im-config），注销并重新登录后生效。");
+  }
 
   /* Restart the input method framework. Over ssh there is no session bus, so
    * provide XDG_RUNTIME_DIR/DBUS_SESSION_BUS_ADDRESS just like install-linux.sh. */

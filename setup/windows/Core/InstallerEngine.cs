@@ -92,6 +92,64 @@ public sealed class InstallerEngine
 
     public static bool IsWeaselInstalled() => FindWeaselDeployer() is not null;
 
+    /// <summary>
+    /// Installed Weasel version parsed from the weasel-X.Y.Z* install directory
+    /// name, or null when not installed / not parseable. Only checking that
+    /// WeaselDeployer.exe exists would silently skip upgrades on machines with
+    /// an older engine (e.g. 0.16.x), whose data lacks the newer schema keys.
+    /// </summary>
+    public static Version? InstalledWeaselVersion()
+    {
+        Version? best = null;
+        foreach (var root in new[] { Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                                     Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) })
+        {
+            var rimeDir = Path.Combine(root, "Rime");
+            if (!Directory.Exists(rimeDir))
+            {
+                continue;
+            }
+            foreach (var dir in Directory.GetDirectories(rimeDir, "weasel-*"))
+            {
+                var text = Path.GetFileName(dir)["weasel-".Length..];
+                var numbers = new List<int>();
+                foreach (var part in text.Split('.'))
+                {
+                    if (!int.TryParse(part.Trim(), out var n))
+                    {
+                        break;
+                    }
+                    numbers.Add(n);
+                }
+                if (numbers.Count == 0)
+                {
+                    continue;
+                }
+                while (numbers.Count < 4)
+                {
+                    numbers.Add(0);
+                }
+                var version = new Version(numbers[0], numbers[1], numbers[2], numbers[3]);
+                if (best is null || version > best)
+                {
+                    best = version;
+                }
+            }
+        }
+        return best;
+    }
+
+    private static Version TargetWeaselVersion()
+    {
+        var parts = WeaselVersion.Split('.');
+        var numbers = parts.Select(p => int.TryParse(p, out var n) ? n : 0).ToList();
+        while (numbers.Count < 4)
+        {
+            numbers.Add(0);
+        }
+        return new Version(numbers[0], numbers[1], numbers[2], numbers[3]);
+    }
+
     public Task DetectOnlyAsync()
     {
         _sink.OnStep("detect", StepState.Running, "");
@@ -143,7 +201,7 @@ public sealed class InstallerEngine
 
     // ---- Step 1: detect -------------------------------------------------
 
-    private Task DetectAsync(IInstallerSink sink)
+    private async Task DetectAsync(IInstallerSink sink)
     {
         sink.OnLog("── 1/5 检测运行环境 / Detecting environment", LogLevel.Info);
 
@@ -152,9 +210,10 @@ public sealed class InstallerEngine
         sink.OnLog($"Windows {os.Version.Major}.{os.Version.Minor}.{os.Version.Build} · {arch}", LogLevel.Detail);
 
         var deployer = FindWeaselDeployer();
+        var installedVersion = InstalledWeaselVersion();
         if (deployer is not null)
         {
-            sink.OnLog($"已安装小狼毫：{deployer}", LogLevel.Ok);
+            sink.OnLog($"已安装小狼毫：{deployer}（版本 {(installedVersion?.ToString() ?? "未知")}）", LogLevel.Ok);
         }
         else
         {
@@ -179,8 +238,23 @@ public sealed class InstallerEngine
             ? "管理员权限：已获取"
             : "管理员权限：安装小狼毫时会弹出 UAC 授权框", LogLevel.Detail);
 
+        // 与 macOS / Linux 一致：探测首选方案镜像，提前暴露网络问题。
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            const string probeUrl = "https://cdn.jsdelivr.net/gh/rime/rime-wubi@master/wubi86.schema.yaml";
+            var data = await Net.GetAnyAsync(new[] { probeUrl }, cts.Token).ConfigureAwait(false);
+            sink.OnLog(data.Length > 0
+                ? "网络：可访问 plum 方案镜像（jsDelivr）"
+                : "网络：jsDelivr 返回空响应，运行时将自动尝试其他镜像。",
+                data.Length > 0 ? LogLevel.Ok : LogLevel.Warn);
+        }
+        catch (Exception ex)
+        {
+            sink.OnLog($"网络：jsDelivr 不可达（{ex.Message.Split('\n')[0]}），运行时将自动尝试其他镜像。", LogLevel.Warn);
+        }
+
         sink.OnStep("detect", StepState.Done, $"Windows {os.Version.Major}.{os.Version.Minor}");
-        return Task.CompletedTask;
     }
 
     // ---- Step 2: engine -------------------------------------------------
@@ -189,11 +263,20 @@ public sealed class InstallerEngine
     {
         sink.OnLog("── 2/5 安装小狼毫 Weasel / Installing Weasel", LogLevel.Info);
 
-        if (FindWeaselDeployer() is not null)
+        // 只看「WeaselDeployer.exe 存在」会漏掉引擎升级：旧版（如 0.16.x）
+        // 目录里照样有部署器。这里比对安装目录名里的版本号，低于目标版本
+        // 就走安装流程更新引擎。
+        var installed = InstalledWeaselVersion();
+        if (installed is not null)
         {
-            sink.OnLog("小狼毫已安装，跳过安装。", LogLevel.Detail);
-            sink.OnStep("engine", StepState.Skipped, "已安装");
-            return;
+            var target = TargetWeaselVersion();
+            if (installed >= target)
+            {
+                sink.OnLog($"小狼毫已安装（{installed} ≥ {WeaselVersion}），跳过安装。", LogLevel.Detail);
+                sink.OnStep("engine", StepState.Skipped, $"已安装 {installed}");
+                return;
+            }
+            sink.OnLog($"已安装小狼毫 {installed} 低于目标版本 {WeaselVersion}，将下载并安装更新。", LogLevel.Info);
         }
 
         var temp = Path.Combine(Path.GetTempPath(), $"weasel-{WeaselVersion}.0-installer.exe");

@@ -37,6 +37,7 @@
       "ref": "master",
       "description": "朙月拼音·简化字",
       "files": [
+        "luna_pinyin.dict.yaml",
         "luna_pinyin_simp.schema.yaml"
       ]
     }
