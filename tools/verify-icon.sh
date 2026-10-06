@@ -48,7 +48,7 @@ w,h,ch,rows = load_png(sys.argv[1])
 # 扫描菜单栏右半区（y 3..24），找连续浅色块（图标特征：宽14-40px、亮像素>=70%）
 best=None
 run=0
-for x in range(1100, w):
+for x in range(1620, 1700):  # 输入法槽位：WiFi 图标左侧
     bright=sum(1 for y in range(3,24,2) if sum(rows[y][x*ch:x*ch+3])/3>190)
     if bright>=8: run+=1
     else:
