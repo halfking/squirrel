@@ -37,7 +37,7 @@
 				<key>TISIntendedLanguage</key>
 				<string>zh-Hans</string>
 				<key>tsInputModeAlternateMenuIconFileKey</key>
-				<string>rime-menu.png</string>
+				<string>menu-icon.png</string>
 				<key>tsInputModeCharacterRepertoireKey</key>
 				<array>
 					<string>Hans</string>
@@ -50,9 +50,9 @@
 				<key>tsInputModeKeyEquivalentModifiersKey</key>
 				<integer>4608</integer>
 				<key>tsInputModeMenuIconFileKey</key>
-				<string>rime-menu.png</string>
+				<string>menu-icon.png</string>
 				<key>tsInputModePaletteIconFileKey</key>
-				<string>rime-menu.png</string>
+				<string>menu-icon.png</string>
 				<key>tsInputModePrimaryInScriptKey</key>
 				<true/>
 				<key>tsInputModeScriptKey</key>
@@ -65,7 +65,7 @@
 				<key>TISIntendedLanguage</key>
 				<string>zh-Hant</string>
 				<key>tsInputModeAlternateMenuIconFileKey</key>
-				<string>rime-menu.png</string>
+				<string>menu-icon.png</string>
 				<key>tsInputModeCharacterRepertoireKey</key>
 				<array>
 					<string>Hant</string>
@@ -78,9 +78,9 @@
 				<key>tsInputModeKeyEquivalentModifiersKey</key>
 				<integer>4608</integer>
 				<key>tsInputModeMenuIconFileKey</key>
-				<string>rime-menu.png</string>
+				<string>menu-icon.png</string>
 				<key>tsInputModePaletteIconFileKey</key>
-				<string>rime-menu.png</string>
+				<string>menu-icon.png</string>
 				<key>tsInputModePrimaryInScriptKey</key>
 				<true/>
 				<key>tsInputModeScriptKey</key>

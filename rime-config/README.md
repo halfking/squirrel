@@ -25,6 +25,15 @@ macOS（鼠鬚管 / Squirrel）、Windows（小狼毫 / Weasel 0.17.4）、Linux
 > 最后手选的方案（`previously_selected_schema`），若发现拼音打不出，先用 F4
 > 切回「五笔·拼音」。
 
+> **⚠️ 用 plum（东风破）装包会覆盖升级版方案**：`rime-install rime-wubi` 会把
+> 上游原版 `wubi_pinyin.schema.yaml`（拼音走反查小词库、繁体输出）拷进用户目录，
+> 覆盖本目录的升级版。装完任何 plum 包后，重新拷贝本目录的
+> `wubi_pinyin.schema.yaml` 到 Rime 用户目录再重新部署。
+>
+> **五笔词库版本**：`wubi86.dict.yaml` v0.7 即 rime/rime-wubi 上游最新
+> （极点五笔6 底表 + google 词频，已逐字节核对），不存在更新的官方版本；
+> `build/` 下的 prism/table 由该词库编译。勿引入未经确认的第三方大词库。
+
 > 左 Shift 切换同时是**引擎出厂默认**：`data/plum/default.yaml` 里
 > `ascii_composer/switch_key/Shift_L` 已经是 `commit_code`，所以即使没有这个补丁
 > （用户删掉了 `default.custom.yaml`）左 Shift 依然切换中英文。补丁保留是为了让

@@ -65,10 +65,10 @@ cp -R "$APP" "$STAGE"
 cp "$BIN/Contents/MacOS/Squirrel" "$STAGE/Contents/MacOS/Squirrel"
 chmod +x "$STAGE/Contents/MacOS/Squirrel"
 
-# 3b) 图标资源：Info.plist 声明的 RimeIcon.icns（app 图标）与 rime-menu.png
+# 3b) 图标资源：Info.plist 声明的 RimeIcon.icns（app 图标）与 menu-icon.png
 #     （输入法菜单栏图标；TIS 对 rime.pdf 矢量渲染会丢"中"字显示成空框）。
 #     骨架缺失时从仓库 resources/ 补齐，避免重装后菜单栏变回空框。
-for icon in RimeIcon.icns rime-menu.png; do
+for icon in RimeIcon.icns menu-icon.png; do
   if [ ! -f "$STAGE/Contents/Resources/$icon" ] && [ -f "$ROOT/resources/$icon" ]; then
     cp "$ROOT/resources/$icon" "$STAGE/Contents/Resources/$icon"
     echo "已补图标: $icon"
