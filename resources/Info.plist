@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>TISInputSourceID</key>
-	<string>im.rime.inputmethod.Squirrel</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
@@ -14,6 +12,12 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>Squirrel</string>
 	<key>CFBundlePackageType</key>
@@ -103,13 +107,15 @@
 	<string>NSApplication</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
 	<key>SUFeedURL</key>
 	<string>https://rime.github.io/release/squirrel/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>ukvWq2dKOWn3B9AsdsQIwOptiDdDKdUjAVNgFxSvB2o=</string>
 	<key>TICapsLockLanguageSwitchCapable</key>
 	<true/>
-	<key>SUEnableInstallerLauncherService</key>
-	<true/>
+	<key>TISInputSourceID</key>
+	<string>im.rime.inputmethod.Squirrel</string>
 </dict>
 </plist>

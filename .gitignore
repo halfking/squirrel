@@ -43,3 +43,4 @@ tools/tis-enable
 tools/tis-select
 tools/click
 tools/tis-reenable
+tools/keypress
