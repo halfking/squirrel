@@ -145,9 +145,10 @@ echo "════ 5. 引擎端到端测试 ════"
 TEST="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/rime-shifttest"
 if [ -x "$TEST" ] && [ -n "$APP" ]; then
   cp "$RIME/user.yaml" /tmp/.user.yaml.hc 2>/dev/null || true
-  # 用检测到的安装位置（系统目录或用户目录）作为 shared_data_dir，
-  # 并显式传给测试程序，避免它探测到另一处副本。
-  OUTT="$(cd "$APP/Contents/SharedSupport" && "$TEST" "$APP/Contents" 2>/dev/null)"
+  # 不能 cd 进 SharedSupport 跑：librime 会把部署产物写进进程工作目录，
+  # 曾把 build/、installation.yaml、user.yaml 写进 app 包内（"deploy 污染"）。
+  # 测试程序通过参数自行定位 shared_data_dir，在 /tmp 下运行即可。
+  OUTT="$(cd /tmp && "$TEST" "$APP/Contents" 2>/dev/null)"
   [ -f /tmp/.user.yaml.hc ] && cp /tmp/.user.yaml.hc "$RIME/user.yaml"
   echo "$OUTT" | grep -E "PASS|FAIL" | sed 's/\x1b\[[0-9;]*m//g' | sed 's/^/  /'
   if echo "$OUTT" | grep -q "全部通过"; then ck "端到端测试" "全部通过" "全部通过"

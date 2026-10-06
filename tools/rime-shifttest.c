@@ -1,6 +1,10 @@
 // 左 Shift 中英切换的端到端验证：用真实 librime + 用户真实配置，
 // 模拟 Squirrel 实际发给引擎的事件序列。
 //
+// ⚠️ 不要在 app 包的 SharedSupport 目录下运行：librime 会把部署产物
+//    （build/、installation.yaml、user.yaml）写进进程工作目录，污染 app 包。
+//    用 argv[1] 指定 app 的 Contents 目录，在 /tmp 等无关目录下运行。
+//
 // 事件构造依据 SquirrelApplicationDelegate / SquirrelInputController：
 //   - MacOSKeyCodes: kVK_Shift -> XK_Shift_L (56)
 //   - osxModifiersToRime: shift 修饰键置 kShiftMask (1)

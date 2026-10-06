@@ -1,5 +1,8 @@
 // rime-schematest.c — 方案行为诊断：指定方案与按键序列，打印候选与上屏。
 //
+// ⚠️ 不要在 app 包的 SharedSupport 目录下运行：librime 会把部署产物写进
+//    进程工作目录，污染 app 包。用 argv[1] 指定 app 的 Contents 目录即可。
+//
 // 用法： rime-schematest [app_Contents_dir] <schema_id> <键序列>...
 //   键序列中 `_` 表示敲一下空格（上屏首选），其余字符逐键送引擎。
 //   例： rime-schematest "" wubi_pinyin nihao _ wq _ vb _
