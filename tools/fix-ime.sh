@@ -8,6 +8,8 @@
 #      启用并选中 im.rime.inputmethod.Squirrel.Hans。
 #   2) 默认方案核对为 wubi_pinyin（五笔·拼音混输：直接敲五笔码或全拼都有候选，
 #      拼音由方案内置 reverse_lookup_translator + pinyin_simp 词库响应）。
+#   3) AppleEnabledInputSources plist 缺鼠须管条目——系统设置列表/菜单栏图标
+#      只认 plist，缺记录则"打字正常但列表里没有鼠须管"。幂等补写。
 #
 # 幂等：重复执行只会重新断言同一状态，不会产生副作用。
 set -uo pipefail
@@ -56,7 +58,7 @@ fi
 
 # ---- 第 2 步：把当前输入源切回鼠鬚管 ---------------------------------------
 say ""
-say "════ 2/2 系统输入源 ════"
+say "════ 2/3 系统输入源 ════"
 if [ -x ./tools/tis-enable ]; then
   ./tools/tis-enable
   TIS_RC=$?
@@ -64,6 +66,40 @@ if [ -x ./tools/tis-enable ]; then
 else
   say "  ✗ 缺少 tools/tis-enable，无法自动切换"
   RC=1
+fi
+
+# ---- 第 3 步：把鼠须管补进输入法列表 plist ---------------------------------
+# macOS 26 上 TIS 数据库认为源"已启用"时 TISEnableInputSource 是 no-op，不会
+# 补写 com.apple.HIToolbox 的 AppleEnabledInputSources；而系统设置的输入法
+# 列表、菜单栏图标恰恰只认这个 plist——缺记录就会出现"打字正常但列表里
+# 找不到鼠须管、图标消失"。这里幂等补写（已存在则不动）。
+say ""
+say "════ 3/3 输入法列表（AppleEnabledInputSources）════"
+PLIST_OUT="$(defaults read com.apple.HIToolbox AppleEnabledInputSources 2>/dev/null)"
+if echo "$PLIST_OUT" | grep -q 'im\.rime\.inputmethod\.Squirrel'; then
+  say "  ✓ 输入法列表已含鼠须管"
+else
+  defaults export com.apple.HIToolbox /tmp/.ht-fix.plist 2>/dev/null \
+  && python3 - <<'PYEOF' && defaults import com.apple.HIToolbox /tmp/.ht-fixed.plist \
+    && killall TextInputMenuAgent 2>/dev/null
+import plistlib
+with open('/tmp/.ht-fix.plist','rb') as f:
+    d = plistlib.load(f)
+arr = d.get('AppleEnabledInputSources', [])
+if not any('rime' in str(e.get('Bundle ID',''))+str(e.get('Input Mode','')) for e in arr):
+    arr.append({'Bundle ID':'im.rime.inputmethod.Squirrel','InputSourceKind':'Keyboard Input Method'})
+    arr.append({'Bundle ID':'im.rime.inputmethod.Squirrel','Input Mode':'im.rime.inputmethod.Squirrel.Hans','InputSourceKind':'Input Mode'})
+    d['AppleEnabledInputSources'] = arr
+with open('/tmp/.ht-fixed.plist','wb') as f:
+    plistlib.dump(d, f)
+PYEOF
+  sleep 2
+  if defaults read com.apple.HIToolbox AppleEnabledInputSources 2>/dev/null | grep -q 'im\.rime\.inputmethod\.Squirrel'; then
+    say "  ✓ 已补写鼠须管条目（列表/图标应立即恢复）"
+  else
+    say "  ✗ 补写失败，请在 系统设置→键盘→输入法→编辑… 里手动添加 Squirrel - Simplified"
+    RC=1
+  fi
 fi
 
 say ""

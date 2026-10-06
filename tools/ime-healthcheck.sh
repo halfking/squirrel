@@ -88,10 +88,14 @@ else
   warn "缺少 /tmp/tis-list" "无法检查输入源"
 fi
 
-# macOS 26 起 com.apple.HIToolbox/AppleEnabledInputSources 不再收录第三方输入法
-# （连系统自带 Ainu/Kotoeri 的启用态也不在里面），启用/选中状态以 TIS 数据库
-# 为准（上面的 tis-list 已覆盖）。plist 只保留布局与系统自带源，不再据此判定。
+# macOS 26：系统设置的输入法列表、菜单栏图标只认 com.apple.HIToolbox 的
+# AppleEnabledInputSources。TIS 数据库的 enabled 状态与它脱钩——DB 已启用时
+# TISEnableInputSource 不补写 plist，缺记录则"打字正常但列表/图标里没有
+# 鼠须管"（tools/fix-ime.sh 第 3 步可幂等补写）。
 MENU="$(defaults read com.apple.HIToolbox AppleEnabledInputSources 2>/dev/null)"
+ckc "输入法列表含鼠须管（plist）" \
+  "$(echo "$MENU" | grep -q 'im\.rime\.inputmethod\.Squirrel' && echo 1 || echo 0)" \
+  "设置/图标/菜单的显示依据"
 if echo "$MENU" | grep -q 'CharacterPaletteIM'; then
   warn "菜单 plist 里有 CharacterPaletteIM" "系统自带表情面板的正常条目，非故障"
 fi
