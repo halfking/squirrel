@@ -166,6 +166,11 @@ final class SquirrelInputController: IMKInputController {
 
   override func activateServer(_ sender: Any!) {
     self.client ?= sender as? IMKTextInput
+    // Activation is the most reliable signal that Squirrel is in use again;
+    // resync the menu-bar status item in case its visibility update from
+    // input-source notifications was missed (icon disappearing after a
+    // menu-bar click).
+    NSApp.squirrelAppDelegate.updateStatusItemVisibility()
     var keyboardLayout = NSApp.squirrelAppDelegate.config?.getString("keyboard_layout") ?? ""
     if keyboardLayout == "last" || keyboardLayout == "" {
       keyboardLayout = ""

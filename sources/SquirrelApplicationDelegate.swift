@@ -61,6 +61,14 @@ final class SquirrelApplicationDelegate: NSObject, NSApplicationDelegate, SPUSta
     addObservers()
   }
 
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    // Main.swift runs startRime/loadSettings (which create the status item
+    // and set isVisible) before app.run(); status-bar mutations made before
+    // the run loop starts do not reliably reach the status bar on macOS 26.
+    // Resync visibility now that the app is live, or the icon never shows.
+    updateStatusItemVisibility()
+  }
+
   func applicationWillTerminate(_ notification: Notification) {
     // swiftlint:disable:next notification_center_detachment
     NotificationCenter.default.removeObserver(self)
@@ -243,6 +251,13 @@ final class SquirrelApplicationDelegate: NSObject, NSApplicationDelegate, SPUSta
     notifCenter.addObserver(self, selector: #selector(inputSourceChanged(_:)),
                             name: .init(kTISNotifySelectedKeyboardInputSourceChanged as String),
                             object: nil, suspensionBehavior: .deliverImmediately)
+    // Opening the input-source menu can flip the selected source transiently;
+    // if the restore-to-Squirrel step produces no further "selected" event,
+    // the status item stays hidden for good. The "enabled" notification also
+    // fires around menu interaction and serves as an extra chance to resync.
+    notifCenter.addObserver(self, selector: #selector(inputSourceChanged(_:)),
+                            name: .init(kTISNotifyEnabledKeyboardInputSourcesChanged as String),
+                            object: nil, suspensionBehavior: .deliverImmediately)
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -370,13 +385,20 @@ private extension SquirrelApplicationDelegate {
       self?.finalizeStrandedComposition()
     }
   }
+}
 
+extension SquirrelApplicationDelegate {
+  // Internal so the input controller can resync the status item from
+  // activateServer(_:): the notification-driven update alone can miss the
+  // restore step after an input-menu interaction hides the icon.
   func updateStatusItemVisibility() {
     guard let statusItem = statusItem else { return }
     let currentInputSourceID = SquirrelInstaller.currentInputSourceID() ?? ""
     statusItem.isVisible = currentInputSourceID.hasPrefix("im.rime.inputmethod.Squirrel")
   }
+}
 
+private extension SquirrelApplicationDelegate {
   // macOS 26 does not call deactivateServer when the input source is switched
   // away by another process via TISSelectInputSource() (e.g. macism, Input
   // Source Pro): the pending composition is stranded and the candidate panel
