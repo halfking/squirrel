@@ -14,4 +14,4 @@ for mode in im.rime.inputmethod.Squirrel.Hans im.rime.inputmethod.Squirrel.Hant;
   done
 done
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1
-echo "图标已切换为 $TARGET，请注销重登后观察菜单栏"
+echo "图标已切换为 ${TARGET}，请注销重登后观察菜单栏"
