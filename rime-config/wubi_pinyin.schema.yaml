@@ -78,6 +78,9 @@ wubi:
   enable_encoder: true
   encode_commit_history: true
   max_phrase_length: 4
+  # 混输优先级：五笔精确码必须排在拼音切分结果之前（yge→「请」而不是
+  # 拼音 yi+ge 切出的「一个」）。提高本翻译器候选的基础权重。
+  initial_quality: 1000
   disable_user_dict_for_patterns:
     - "^z.*$"
 

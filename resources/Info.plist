@@ -37,7 +37,7 @@
 				<key>TISIntendedLanguage</key>
 				<string>zh-Hans</string>
 				<key>tsInputModeAlternateMenuIconFileKey</key>
-				<string>rime-menu-v2.png</string>
+				<string>rime-menu-v3.png</string>
 				<key>tsInputModeCharacterRepertoireKey</key>
 				<array>
 					<string>Hans</string>
@@ -50,9 +50,9 @@
 				<key>tsInputModeKeyEquivalentModifiersKey</key>
 				<integer>4608</integer>
 				<key>tsInputModeMenuIconFileKey</key>
-				<string>rime-menu-v2.png</string>
+				<string>rime-menu-v3.png</string>
 				<key>tsInputModePaletteIconFileKey</key>
-				<string>rime-menu-v2.png</string>
+				<string>rime-menu-v3.png</string>
 				<key>tsInputModePrimaryInScriptKey</key>
 				<true/>
 				<key>tsInputModeScriptKey</key>
@@ -65,7 +65,7 @@
 				<key>TISIntendedLanguage</key>
 				<string>zh-Hant</string>
 				<key>tsInputModeAlternateMenuIconFileKey</key>
-				<string>rime-menu-v2.png</string>
+				<string>rime-menu-v3.png</string>
 				<key>tsInputModeCharacterRepertoireKey</key>
 				<array>
 					<string>Hant</string>
@@ -78,9 +78,9 @@
 				<key>tsInputModeKeyEquivalentModifiersKey</key>
 				<integer>4608</integer>
 				<key>tsInputModeMenuIconFileKey</key>
-				<string>rime-menu-v2.png</string>
+				<string>rime-menu-v3.png</string>
 				<key>tsInputModePaletteIconFileKey</key>
-				<string>rime-menu-v2.png</string>
+				<string>rime-menu-v3.png</string>
 				<key>tsInputModePrimaryInScriptKey</key>
 				<true/>
 				<key>tsInputModeScriptKey</key>
@@ -110,9 +110,9 @@
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://rime.github.io/release/squirrel/appcast.xml</string>
+	<string>https://files.kxpms.cn/squirrel/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>ukvWq2dKOWn3B9AsdsQIwOptiDdDKdUjAVNgFxSvB2o=</string>
+	<string>9xRZEYNwN5TzL1v+9ML5vNa4XXc8wghb2L6uYWEO89g=</string>
 	<key>TICapsLockLanguageSwitchCapable</key>
 	<true/>
 	<key>TISInputSourceID</key>
