@@ -40,6 +40,7 @@ cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 cp "$REPO_DIR/rime-config/default.custom.yaml" "$APP_BUNDLE/Contents/Resources/default.custom.yaml"
+cp "$REPO_DIR/rime-config/wubi_pinyin.schema.yaml" "$APP_BUNDLE/Contents/Resources/wubi_pinyin.schema.yaml"
 cp "$SETUP_DIR/shared/presets.json" "$APP_BUNDLE/Contents/Resources/presets.json"
 
 if [ -d "$PAYLOAD_APP" ]; then

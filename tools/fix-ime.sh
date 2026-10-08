@@ -41,14 +41,17 @@ if [ -f "$BUILT" ]; then
     say "  ✗ 未找到 Shift_L: commit_code，左 Shift 不能切换中英文"
     RC=1
   fi
-  # grep -c 在零匹配时会"打印 0 并返回非 0"，所以 `|| echo 0` 会多补一行 0，
-  # 变量变成 "0\n0"。这里用 || true 并对空值兜底。
+  # 出厂自带一批 app_options（Terminal/VSCode 等默认英文态，上游有意的默认值）。
+  # 只有超出出厂清单的锁定才会导致"该应用里打不出中文"。
+  SYS_APP="/Library/Input Methods/Squirrel.app"
   LOCK="$(grep -c 'ascii_mode: true' "$RIME/build/squirrel.yaml" 2>/dev/null || true)"
   LOCK="${LOCK:-0}"
-  if [ "$LOCK" = "0" ]; then
-    say "  ✓ 没有应用被强制锁成英文态"
+  STOCK="$(grep -c 'ascii_mode: true' "$SYS_APP/Contents/SharedSupport/squirrel.yaml" 2>/dev/null || true)"
+  STOCK="${STOCK:-0}"
+  if [ "$LOCK" -le "$STOCK" ]; then
+    say "  ✓ 强制英文应用 $LOCK 个（≤ 出厂默认 $STOCK，英文环境应用的合理预设）"
   else
-    say "  ✗ 有 ${LOCK} 个应用被锁 ascii_mode: true，会打不出中文"
+    say "  ✗ 有 $((LOCK - STOCK)) 个应用被额外锁 ascii_mode: true（超出出厂默认），会打不出中文"
     RC=1
   fi
 else

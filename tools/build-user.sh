@@ -10,22 +10,32 @@
 # 额外处理：
 #   - librime 源码未 checkout，rime/key_table.h 缺失 → 用 tools/rime-shim 提供
 #   - 源码用了 Swift 5.7 的裸斜杠正则 → 加 -enable-bare-slash-regex
+#   - SDK 优先取 CommandLineTools 自带的（本机可无完整 Xcode），Xcode 在则用 Xcode 的
+#   - bundle 骨架完全自举：Info.plist 由 resources/Info.plist 替换构建占位符生成，
+#     SharedSupport / Frameworks / 工具二进制从 make 产物（action-install.sh + plum-data）
+#     组装，不再依赖上次构建的残留目录；本地化 .strings 取自已安装 app（.xcstrings
+#     需要 xcstringstool 编译，CLT 没有）。
 #
 # 用法： bash tools/build-user.sh [安装目录]
-#        不传安装目录则只构建，不安装。默认安装到 ~/Library/Input Methods。
+#        不传参数默认安装到 /Library/Input Methods/Squirrel.app；
+#        传空字符串（""）则只构建、不安装。
+#        系统目录里 .app 的父目录归 root 所有、删不掉，安装采用"原位换 Contents"：
+#        /Library/Input Methods/Squirrel.app 目录本身保留，Contents 整体替换。
+#        用户目录（如 ~/Library/Input Methods）则整包替换。
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/sources"
 APP="$ROOT/build-manual/Squirrel.app"
-OUT="${1:-}"
+OUT="${1:-/Library/Input Methods/Squirrel.app}"
 
 CLANG=/Library/Developer/CommandLineTools/usr/bin/clang
 SWIFTC=/Library/Developer/CommandLineTools/usr/bin/swiftc
 
-# 1) 定位 SDK
-SDK="$(ls -d /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/*.sdk 2>/dev/null | tail -1)"
+# 1) 定位 SDK：CommandLineTools 自带 SDK 兜底，Xcode 安装时用 Xcode 的
+SDK="$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk 2>/dev/null || true)"
+[ -n "$SDK" ] || SDK="$(ls -d /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/*.sdk 2>/dev/null | tail -1)"
 [ -n "$SDK" ] || { echo "找不到 macOS SDK"; exit 1; }
 echo "SDK: $SDK"
 
@@ -33,7 +43,65 @@ for t in "$CLANG" "$SWIFTC"; do
   [ -x "$t" ] || { echo "缺少编译器: $t"; exit 1; }
 done
 
-# 2) 编译主程序
+# 2) 依赖产物检查（由 action-install.sh / make plum-data 生成）
+for dep in "$ROOT/lib/librime.1.dylib" "$ROOT/Frameworks/Sparkle.framework" \
+           "$ROOT/data/plum/default.yaml" "$ROOT/data/squirrel.yaml" \
+           "$ROOT/bin/rime-install"; do
+  [ -e "$dep" ] || { echo "缺少构建依赖: $dep（先跑 bash action-install.sh && make plum-data）"; exit 1; }
+done
+
+# 3) 组装 bundle 骨架
+echo "组装 bundle 骨架…"
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks" \
+         "$APP/Contents/SharedSupport"
+
+# 版本号：pbxproj 的 CURRENT_PROJECT_VERSION，替换 Info.plist 占位符。
+# SQUIRREL_VERSION 环境变量可覆盖——换版本号是打散 TIS 输入源缓存的有效手段
+# （bundle id 不变时，TIS 会按"id+版本"缓存输入源元数据，原位换内容不换版本
+# 会导致 TISSelectInputSource 以 paramErr(-50) 拒绝选中，见 tools/tis-register.c）。
+VERSION="${SQUIRREL_VERSION:-$(grep -m1 'CURRENT_PROJECT_VERSION' "$ROOT/Squirrel.xcodeproj/project.pbxproj" \
+  | sed -E 's/.*= *([0-9][^;]*);.*/\1/' | tr -d ' ')}"
+[ -n "$VERSION" ] || VERSION="0.0.0"
+sed -e "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/im.rime.inputmethod.Squirrel/g" \
+    -e "s/\$(CURRENT_PROJECT_VERSION)/${VERSION}/g" \
+    "$ROOT/resources/Info.plist" > "$APP/Contents/Info.plist"
+plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist 无效"; exit 1; }
+
+# Resources：Info.plist 引用的图标 + 说明文件。本地化 .strings 从已安装的 app
+# 里取（那是 xcodebuild 产品，.strings 已编译）；没有就不带，界面退化为英文键名。
+for f in RimeIcon.icns rime-menu-v3.png rime.pdf; do
+  [ -f "$ROOT/resources/$f" ] && cp "$ROOT/resources/$f" "$APP/Contents/Resources/"
+done
+cp "$ROOT/LICENSE.txt" "$ROOT/README.md" "$APP/Contents/Resources/" 2>/dev/null || true
+SYS_APP="/Library/Input Methods/Squirrel.app"
+if [ -d "$SYS_APP/Contents/Resources" ]; then
+  cp -R "$SYS_APP/Contents/Resources/en.lproj" "$SYS_APP/Contents/Resources/zh-Hans.lproj" \
+        "$SYS_APP/Contents/Resources/zh-Hant.lproj" "$APP/Contents/Resources/" 2>/dev/null || true
+  cp "$SYS_APP/Contents/Resources/Assets.car" "$APP/Contents/Resources/" 2>/dev/null || true
+fi
+
+# Frameworks：Sparkle + librime + 插件
+cp -R "$ROOT/Frameworks/Sparkle.framework" "$APP/Contents/Frameworks/"
+cp "$ROOT/lib/librime.1.dylib" "$APP/Contents/Frameworks/"
+if [ -d "$ROOT/lib/rime-plugins" ] && ls "$ROOT/lib/rime-plugins"/*.dylib >/dev/null 2>&1; then
+  mkdir -p "$APP/Contents/Frameworks/rime-plugins"
+  cp "$ROOT/lib/rime-plugins"/*.dylib "$APP/Contents/Frameworks/rime-plugins/"
+fi
+
+# SharedSupport：plum 方案/词库 + squirrel.yaml + OpenCC 数据
+cp "$ROOT/data/plum/"* "$APP/Contents/SharedSupport/"
+cp "$ROOT/data/squirrel.yaml" "$APP/Contents/SharedSupport/"
+mkdir -p "$APP/Contents/SharedSupport/opencc"
+cp "$ROOT/data/opencc/"* "$APP/Contents/SharedSupport/opencc/"
+
+# MacOS 目录：维护命令工具（rime-install 供 postinstall / 安装程序使用）
+cp "$ROOT/bin/rime-install" "$APP/Contents/MacOS/"
+for t in rime_deployer rime_dict_manager; do
+  [ -f "$ROOT/bin/$t" ] && cp "$ROOT/bin/$t" "$APP/Contents/MacOS/"
+done
+
+# 4) 编译主程序
 BIN="$(mktemp -t squirrel-build).app"
 # mktemp -t 只创建同名普通文件，追加的 .app 及其内部目录并不存在。
 # 少了这一步，swiftc 链接阶段会以
@@ -55,54 +123,49 @@ echo "编译 Squirrel 主程序…"
   -o "$BIN/Contents/MacOS/Squirrel" \
   "$SRC"/*.swift
 
-# 3) 组装 bundle（复用 build-manual 里已就位的 Frameworks / Resources / SharedSupport）
-#    注意：STAGE 目标路径不能预先 mkdir。若先建目录，cp -R "$APP" "$STAGE" 会把
-#    app 套进 $STAGE/Squirrel.app/，后续对 $STAGE/Contents/... 的操作全部落空。
-STAGE="$(mktemp -d)/Squirrel.app"
-cp -R "$APP" "$STAGE"
-# 刚编出来的可执行文件在 $BIN，骨架目录里没有，必须显式放进去，
-# 否则会沿用上一次的旧二进制（症状：改了源码却毫无变化）。
-cp "$BIN/Contents/MacOS/Squirrel" "$STAGE/Contents/MacOS/Squirrel"
-chmod +x "$STAGE/Contents/MacOS/Squirrel"
-
-# 3b) 图标资源：Info.plist 声明的 RimeIcon.icns（app 图标）与 menu-icon.png
-#     （输入法菜单栏图标；TIS 对 rime.pdf 矢量渲染会丢"中"字显示成空框）。
-#     骨架缺失时从仓库 resources/ 补齐，避免重装后菜单栏变回空框。
-for icon in RimeIcon.icns menu-icon.png; do
-  if [ ! -f "$STAGE/Contents/Resources/$icon" ] && [ -f "$ROOT/resources/$icon" ]; then
-    cp "$ROOT/resources/$icon" "$STAGE/Contents/Resources/$icon"
-    echo "已补图标: $icon"
-  fi
+# 刚编出来的可执行文件放进骨架，不能沿用旧二进制
+cp "$BIN/Contents/MacOS/Squirrel" "$APP/Contents/MacOS/Squirrel"
+chmod +x "$APP/Contents/MacOS/Squirrel"
+for t in rime-install rime_deployer rime_dict_manager; do
+  [ -f "$APP/Contents/MacOS/$t" ] && chmod +x "$APP/Contents/MacOS/$t"
 done
 
-# 3.5) 补版本号：骨架的 Info.plist 没有 CFBundleShortVersionString，
-#      安装程序（setup/）的引擎一致比对取不到版本时会退化为"永远不一致"，
-#      导致每次重跑都重装引擎、弹一次管理员授权框。
-VERSION="${SQUIRREL_VERSION:-$(grep -m1 'CURRENT_PROJECT_VERSION' "$ROOT/Squirrel.xcodeproj/project.pbxproj" \
-  | sed -E 's/.*= *([0-9][^;]*);.*/\1/' | tr -d ' ')}"
-[ -n "$VERSION" ] || VERSION="0.0.0"
+# 5) 补齐版本号两个键（Sparkle / 安装程序的版本识别用）
 for KEY in CFBundleShortVersionString CFBundleVersion; do
-  /usr/libexec/PlistBuddy -c "Add :$KEY string $VERSION" "$STAGE/Contents/Info.plist" 2>/dev/null \
-    || /usr/libexec/PlistBuddy -c "Set :$KEY $VERSION" "$STAGE/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Add :$KEY string $VERSION" "$APP/Contents/Info.plist" 2>/dev/null \
+    || /usr/libexec/PlistBuddy -c "Set :$KEY $VERSION" "$APP/Contents/Info.plist"
 done
 echo "版本号: $VERSION"
 
-# 4) 签名并校验封印
+# 6) 签名并校验封印
 echo "签名…"
-codesign --force --deep --sign - "$STAGE" >/dev/null 2>&1
-codesign --verify --deep --strict "$STAGE" >/dev/null 2>&1 \
+codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+codesign --verify --deep --strict "$APP" >/dev/null 2>&1 \
   || { echo "签名校验失败"; exit 1; }
 echo "签名封印: 完好"
 
 if [ -z "$OUT" ]; then
-  echo "构建完成（未安装）: $STAGE"
+  echo "构建完成（未安装）: $APP"
   exit 0
 fi
 
-# 5) 安装
-mkdir -p "$(dirname "$OUT")"
-rm -rf "$OUT"
-cp -R "$STAGE" "$OUT"
+# 7) 安装
+#    系统目录（/Library/Input Methods）父目录归 root，.app 删不掉但内容可换
+#    （上次 make install 后 .app 属主是当前用户）；用户目录整包替换。
+if [ -d "$OUT" ]; then
+  if [ -w "$(dirname "$OUT")" ]; then
+    rm -rf "$OUT"
+    mkdir -p "$(dirname "$OUT")"
+    cp -R "$APP" "$OUT"
+  else
+    echo "原位更新 $OUT 的 Contents（父目录不可写，保留 .app 外壳）"
+    rm -rf "$OUT/Contents"
+    cp -R "$APP/Contents" "$OUT/Contents"
+  fi
+else
+  mkdir -p "$(dirname "$OUT")"
+  cp -R "$APP" "$OUT"
+fi
 echo "已安装: $OUT"
 echo
 echo "接下来运行 tools/ime-healthcheck.sh 确认状态，"

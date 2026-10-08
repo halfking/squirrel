@@ -6,13 +6,16 @@
 #   词库小、无整句。本版改为 script_translator + luna_pinyin 全词库：
 #   - 直接敲五笔码：table_translator（wubi86 码表）出候选；
 #   - 直接敲全拼：script_translator（luna_pinyin）出候选，支持词组与整句；
+#   - 直接敲英文单词：table_translator@easy_en（Easy English 词库）把单词
+#     本身列为候选，无需先切英文态（词库+方案文件由 presets.json 的
+#     easy-en 包提供，prism 由 easy_en 方案在部署时编译）；
 #   - ` 前缀反查保留（pinyin_simp）。
 #   并删除 abc_segmentor 的 reverse_lookup 附加标签，避免拼音候选重复。
 
 schema:
   schema_id: wubi_pinyin
   name: "五笔·拼音"
-  version: "1.0"
+  version: "1.1"
   author:
     - 發明人 王永民先生
   description: |
@@ -22,6 +25,7 @@ schema:
   dependencies:
     - luna_pinyin
     - pinyin_simp
+    - easy_en
 
 switches:
   - name: ascii_mode
@@ -56,19 +60,31 @@ engine:
     - punct_segmentor
     - fallback_segmentor
   translators:
+    # 五笔是本方案的主翻译器（节点名 translator）：部署器只为「主词典」
+    # 编译 prism（名字取 speller/prism，缺省是词典名）。此前挂在 @wubi
+    # 命名节点下时没人编译 wubi_pinyin.prism.bin，五笔检索一直靠历史残留文件。
+    - table_translator
     - punct_translator
-    - table_translator@wubi
     - script_translator@pinyin
+    - table_translator@easy_en
     - reverse_lookup_translator
   filters:
     - simplifier@zh_hans
     - uniquifier
 
 speller:
+  # 字母表带大小写：让大写字母也能进入编码（如 iPhone、USA 里的英文候选）。
+  # 与 easy-en 官方混输配方一致；需配合 recognizer/patterns/uppercase 置空，
+  # 否则大写串会被 matcher 切进 uppercase 标签、到不了 abc 段。
+  alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
   delimiter: " ;'"
+  # 部署器按此名编译主词典（wubi86）的 prism；缺省会用词典名 wubi86，
+  # 与主翻译器运行时要找的 prism（缺省 = schema_id）对不上。
+  prism: wubi_pinyin
   #max_code_length: 4  # 四碼頂字上屏
 
-wubi:
+# 五笔主翻译器：词典 wubi86，prism 由部署器按 speller/prism 编译。
+translator:
   dictionary: wubi86
   prism: wubi_pinyin
   enable_charset_filter: true
@@ -87,6 +103,19 @@ wubi:
 pinyin:
   dictionary: luna_pinyin
   prism: luna_pinyin
+
+# 英文单词候选：词库即编码（word→word），敲到哪补到哪。
+# prism 指向 easy_en 方案部署出的 prism（含大小写路径）；
+# enable_completion 提供前缀补全，enable_sentence 关闭（纯单词候选，
+# 避免英文造句引擎和五笔一样把字母串拼成怪句）。
+# initial_quality 压到负值：英文候选恒排在五笔/拼音之后，仅在中文侧
+# 无候选或翻页时才顶上来。
+easy_en:
+  dictionary: easy_en
+  prism: easy_en
+  enable_completion: true
+  enable_sentence: false
+  initial_quality: -1
 
 zh_hans:
   option_name: zh_hans
@@ -114,3 +143,6 @@ recognizer:
   import_preset: default
   patterns:
     reverse_lookup: "`[a-z]*'?$"
+    # 置空 prelude 的大写识别模式：大写字母串按普通编码走 abc 段，
+    # 由 easy_en 出候选（speller/alphabet 已含大写）。
+    uppercase: ""

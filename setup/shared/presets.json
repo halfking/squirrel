@@ -40,6 +40,17 @@
         "luna_pinyin.dict.yaml",
         "luna_pinyin_simp.schema.yaml"
       ]
+    },
+    {
+      "name": "easy-en",
+      "repo": "BlindingDark/rime-easy-en",
+      "mirror": "",
+      "ref": "master",
+      "description": "Easy English 词库：英文单词作为候选（LGPL-3.0）",
+      "files": [
+        "easy_en.dict.yaml",
+        "easy_en.schema.yaml"
+      ]
     }
   ]
 }

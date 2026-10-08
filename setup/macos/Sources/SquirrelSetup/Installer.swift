@@ -193,33 +193,41 @@ final class Installer {
     set(.running)
     log("── 3/5 写入用户配置 / Writing user config", .info)
 
-    let source = Payload.defaultCustomYAML
-    guard FileManager.default.fileExists(atPath: source.path) else {
-      throw PayloadError.missing("default.custom.yaml")
+    // 部署顺序很关键：先写我们自己的 wubi_pinyin.schema.yaml，presets 一步
+    // 「已存在则跳过下载」才不会用上游原版方案覆盖掉升级版（升级版带
+    // 五笔/拼音直接混打和英文单词候选；上游版是反查小词库+繁体输出）。
+    let files: [(source: URL, name: String, note: String)] = [
+      (Payload.defaultCustomYAML, "default.custom.yaml",
+       "  方案：五笔·拼音 / 朙月拼音·简体 / 五笔86；中英切换：左 Shift"),
+      (Payload.wubiPinyinSchemaYAML, "wubi_pinyin.schema.yaml",
+       "  混输升级 + 英文单词候选（Easy English 词库）"),
+    ]
+    let dir = URL(fileURLWithPath: Path.userRimeDir)
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+    for file in files {
+      guard FileManager.default.fileExists(atPath: file.source.path) else {
+        throw PayloadError.missing(file.name)
+      }
+      let dest = dir.appendingPathComponent(file.name)
+
+      let newData = try Data(contentsOf: file.source)
+      if let oldData = try? Data(contentsOf: dest), oldData == newData {
+        log("\(file.name) 已是最新内容，跳过写入。", .detail)
+        continue
+      }
+
+      if FileManager.default.fileExists(atPath: dest.path) {
+        let backup = dest.deletingPathExtension().appendingPathExtension("yaml.bak-\(timestamp())")
+        try? FileManager.default.copyItem(at: dest, to: backup)
+        log("已备份原配置 → \(backup.lastPathComponent)", .detail)
+      }
+
+      try newData.write(to: dest, options: .atomic)
+      log("写入 \(dest.path)", .ok)
+      log(file.note, .detail)
     }
-    let dest = URL(fileURLWithPath: Path.userRimeDir).appendingPathComponent("default.custom.yaml")
-
-    try FileManager.default.createDirectory(at: URL(fileURLWithPath: Path.userRimeDir),
-                                            withIntermediateDirectories: true)
-
-    let newData = try Data(contentsOf: source)
-    if let oldData = try? Data(contentsOf: dest), oldData == newData {
-      log("default.custom.yaml 已是最新内容，跳过写入。", .detail)
-      set(.skipped("已是最新"))
-      return
-    }
-
-    if FileManager.default.fileExists(atPath: dest.path) {
-      let backup = dest.deletingPathExtension().appendingPathExtension("yaml.bak-\(timestamp())")
-      try? FileManager.default.copyItem(at: dest, to: backup)
-      log("已备份原配置 → \(backup.lastPathComponent)", .detail)
-    }
-
-    try newData.write(to: dest, options: .atomic)
-    log("写入 \(dest.path)", .ok)
-    log("  方案：五笔·拼音 / 朙月拼音·简体 / 五笔86", .detail)
-    log("  中英切换：左 Shift（打字中途按下则编码原样上屏）", .detail)
-    set(.done("default.custom.yaml"))
+    set(.done("用户配置"))
   }
 
   // MARK: Step 4 — presets

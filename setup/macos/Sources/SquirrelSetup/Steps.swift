@@ -48,8 +48,8 @@ enum Steps {
   static let all: [Step] = [
     Step("detect", "检测运行环境", "识别系统版本、已安装的 Rime 与用户配置"),
     Step("engine", "安装 Squirrel 鼠鬚管", "安装输入法引擎到 /Library/Input Methods", needsAdmin: true),
-    Step("config", "写入用户配置", "部署 default.custom.yaml（五笔 / 朙月拼音 / 左 Shift 切换）"),
-    Step("presets", "安装词库与方案", "按 plum 方案下载 wubi86、五笔·拼音、朙月拼音词库"),
+    Step("config", "写入用户配置", "部署 default.custom.yaml 与升级版五笔·拼音方案（混输 / 英文候选 / 左 Shift 切换）"),
+    Step("presets", "安装词库与方案", "按 plum 方案下载 wubi86、朙月拼音、Easy English 词库"),
     Step("deploy", "编译并启用输入法", "运行 Squirrel --build 并注册、启用输入源"),
     Step("done", "完成", "打开配置目录或开始使用")
   ]

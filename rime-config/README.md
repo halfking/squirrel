@@ -12,12 +12,20 @@ macOS（鼠鬚管 / Squirrel）、Windows（小狼毫 / Weasel 0.17.4）、Linux
     （`Shift_L` / `Shift_R` 均为 `commit_code`）。
 - `wubi_pinyin.schema.yaml` — 升级版「五笔·拼音」混输方案（覆盖上游同名方案）：
   - 五笔码与全拼**同一个方案内直接混打**，无需切换；
+  - **英文单词候选**：直接敲英文单词（如 `hello`、`world`），单词本身出现在候选
+    里，选中即上屏，无需先切英文态；`enable_completion` 还提供前缀补全
+    （敲 `hel` 即可补全 `hello`/`help`…）。大写同样支持（`iPhone`、`USA`）；
   - 拼音改用 `luna_pinyin` 全词库 + `script_translator`（上游用袖珍拼音反查，
     词库小、无整句），支持词组与整句；
   - 默认**简体输出**（`simplifier` + t2s，同 `luna_pinyin_simp` 的机制）；
   - 关闭五笔侧 `enable_sentence`：混输时字母串会被五笔造句引擎拼成乱词
-    （`nihao`→「悄虚」）并排到拼音整句之前；
+    （`nihao`→「悄虚」）并排到拼音整句之前；英文侧同样关闭造句，只出单词候选；
   - 保留 `` ` `` 前缀拼音反查（袖珍拼音词库）。
+- `easy_en.dict.yaml` / `easy_en.schema.yaml` — Easy English 英文词库（约 74.5 万
+  行，含大小写映射）。**来源**：`BlindingDark/rime-easy-en`（master，
+  LGPL-3.0），与上游逐字节一致，勿手改。词库即编码（`hello → hello`）。
+  `easy_en.schema.yaml` 本身不进方案选单，部署时负责编译 `easy_en.prism.bin`
+  （`table_translator@easy_en` 的检索索引必须依赖它，缺它英文候选会静默失效）。
 
 > **混输的关键认知**：`wubi86` 是纯五笔——排到 schema_list 首位时，打拼音会
 > 被五笔引擎拼成乱词上屏（如 `nihao`→「悄虚」），表现就是"拼音不行"。
@@ -29,10 +37,18 @@ macOS（鼠鬚管 / Squirrel）、Windows（小狼毫 / Weasel 0.17.4）、Linux
 > 上游原版 `wubi_pinyin.schema.yaml`（拼音走反查小词库、繁体输出）拷进用户目录，
 > 覆盖本目录的升级版。装完任何 plum 包后，重新拷贝本目录的
 > `wubi_pinyin.schema.yaml` 到 Rime 用户目录再重新部署。
->
+> （macOS 安装程序已内置升级版并在 presets 下载**之前**写入，不会被覆盖。）
+
 > **五笔词库版本**：`wubi86.dict.yaml` v0.7 即 rime/rime-wubi 上游最新
 > （极点五笔6 底表 + google 词频，已逐字节核对），不存在更新的官方版本；
 > `build/` 下的 prism/table 由该词库编译。勿引入未经确认的第三方大词库。
+> （Easy English 词库是唯一例外：纯英文词→词编码，不参与五笔/拼音检索，
+> `initial_quality: -1` 保证它恒排在中文候选之后。）
+
+> **英文候选的部署前提**：`~/Library/Rime` 里必须同时有
+> `easy_en.dict.yaml`（词库）与 `easy_en.schema.yaml`（部署时编译
+> `easy_en.prism.bin` 用的索引方案）。只拷词库不拷方案，英文候选会
+> 静默失效（librime 找不到 prism，翻译器直接不加载）。
 
 > 左 Shift 切换同时是**引擎出厂默认**：`data/plum/default.yaml` 里
 > `ascii_composer/switch_key/Shift_L` 已经是 `commit_code`，所以即使没有这个补丁
@@ -104,6 +120,8 @@ fcitx5-remote -n   # 应输出 rime
 
 - 默认方案「五笔·拼音」：**五笔码与全拼直接混打**——`wq`→你、`vb`→好、
   `wqvb`→你好（五笔），`nihao`→你好、`shiweishuji`→市委书记（拼音整句），均简体输出；
+- **英文单词直接出候选**：中文态下敲 `hello`，候选里就有 `hello`，选中上屏；
+  敲 `hel` 可前缀补全 `hello`/`help`…（排在五笔/拼音候选之后，翻页即见）；
 - 按 **F4** / **Ctrl+`** 呼出方案选单，可在五笔·拼音 / 简体拼音 / 五笔86之间临时切换
   （Rime 会记住最后选择，新会话沿用）；
 - 按 **左 Shift** 或 **右 Shift** 在中文 / 英文之间切换

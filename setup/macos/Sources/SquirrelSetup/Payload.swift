@@ -54,6 +54,16 @@ enum Payload {
     resourceURL.appendingPathComponent("default.custom.yaml")
   }
 
+  /// The upgraded mixed-input schema (`rime-config/wubi_pinyin.schema.yaml`).
+  ///
+  /// Has to ship in the bundle: the plum preset fetches the UPSTREAM
+  /// wubi_pinyin.schema.yaml from rime/rime-wubi, which routes pinyin through
+  /// the tiny reverse-lookup dictionary and Traditional output — deploying it
+  /// would silently undo the mixed-input and English-candidate upgrades.
+  static var wubiPinyinSchemaYAML: URL {
+    resourceURL.appendingPathComponent("wubi_pinyin.schema.yaml")
+  }
+
   /// plum preset manifest.
   static var presets: PresetPackage {
     get throws {

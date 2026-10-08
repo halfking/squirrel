@@ -6,7 +6,20 @@
 #include <string.h>
 
 static CFStringRef copySourceByID(CFStringRef want, TISInputSourceRef *out) {
-  CFArrayRef list = TISCreateInputSourceList(NULL, true);
+  // 先在"已启用"列表里找（includeAll=false）：对 includeAll=true 拿到的
+  // 未激活实例调 TISSelectInputSource 会报 paramErr(-50)。
+  CFStringRef filterKeys[] = { kTISPropertyInputSourceID };
+  CFTypeRef filterValues[] = { want };
+  CFDictionaryRef filter = CFDictionaryCreate(NULL, (const void**)filterKeys,
+                                              (const void**)filterValues, 1,
+                                              &kCFTypeDictionaryKeyCallBacks,
+                                              &kCFTypeDictionaryValueCallBacks);
+  CFArrayRef list = TISCreateInputSourceList(filter, false);
+  if (!list || CFArrayGetCount(list) == 0) {
+    if (list) CFRelease(list);
+    list = TISCreateInputSourceList(NULL, true);  // 回退：全量列表
+  }
+  if (!list) return NULL;
   CFIndex n = CFArrayGetCount(list);
   CFStringRef found = NULL;
   for (CFIndex i = 0; i < n; i++) {

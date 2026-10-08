@@ -175,6 +175,47 @@ int main(int argc, char** argv) {
     }
   }
 
+  printf("\n=== 1c. 英文单词应出现在候选里（中英混选优化）===\n");
+  {
+    typeStr("hello");
+    show("敲完 hello");
+    // 英文候选 initial_quality 为负，排在五笔/拼音候选之后，可能不在首页：
+    // 逐页查找（'=' 为 paging_with_minus_equal 的下一页键），找到即停。
+    int found = 0;
+    for (int page = 0; page < 60; page++) {
+      RIME_STRUCT(RimeContext_stdbool, c);
+      api->get_context(s, &c);
+      for (int i = 0; i < c.menu.num_candidates; i++) {
+        if (strcmp(c.menu.candidates[i].text, "hello") == 0) { found = 1; break; }
+      }
+      Bool last = c.menu.is_last_page;
+      api->free_context(&c);
+      if (found || last) break;
+      if (!api->process_key(s, '=', 0)) break;  // 翻页键被拒说明没有更多页
+    }
+    check("英文单词 hello 出现在候选中", found);
+    if (found) {
+      int idx = -1;
+      RIME_STRUCT(RimeContext_stdbool, c2);
+      api->get_context(s, &c2);
+      for (int i = 0; i < c2.menu.num_candidates; i++) {
+        if (strcmp(c2.menu.candidates[i].text, "hello") == 0) { idx = i; break; }
+      }
+      api->free_context(&c2);
+      if (idx >= 0) {
+        api->process_key(s, '1' + idx, 0);  // 数字键选中该候选
+        RIME_STRUCT(RimeCommit, cmh);
+        api->get_commit(s, &cmh);
+        printf("  上屏结果: [%s]\n", cmh.text ? cmh.text : "(无)");
+        check("选中英文候选后上屏为「hello」",
+              cmh.text && strcmp(cmh.text, "hello") == 0);
+        api->free_commit(&cmh);
+      }
+    } else {
+      api->process_key(s, XK_Escape, 0);  // 清掉编码，不影响后续断言
+    }
+  }
+
   printf("\n=== 2. 轻点左 Shift → 应切到英文态 ===\n");
   tapLeftShift();
   show("轻点左 Shift 后");

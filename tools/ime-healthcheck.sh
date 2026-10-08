@@ -65,6 +65,12 @@ fi
 
 echo
 echo "════ 2. 系统输入源 ════"
+# /tmp 重启即清；有 tools/tis-list.c 就地编译一份（CLT SDK，无需完整 Xcode）
+if [ ! -x /tmp/tis-list ] && [ -f "$(dirname "${BASH_SOURCE[0]}")/tis-list.c" ] && [ -x /Library/Developer/CommandLineTools/usr/bin/clang ]; then
+  /Library/Developer/CommandLineTools/usr/bin/clang \
+    -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -arch arm64 \
+    -framework Carbon "$(dirname "${BASH_SOURCE[0]}")/tis-list.c" -o /tmp/tis-list 2>/dev/null
+fi
 if [ -x /tmp/tis-list ]; then
   CURLINE="$(/tmp/tis-list 2>/dev/null | tail -1)"
   CUR="$(echo "$CURLINE" | grep -oE 'im\.[A-Za-z0-9._-]+' | head -1)"
@@ -137,8 +143,18 @@ echo "════ 4. Rime 配置 ════"
   ck "左 Shift 绑定" "$SH" "Shift_L:commit_code"
 }
 [ -f "$RIME/build/squirrel.yaml" ] && {
+  # 出厂自带一批 app_options（Terminal/VSCode/iTerm2 等默认英文态，属上游有意的
+  # 默认值，不是故障）。只有超出出厂清单的锁定才是"打不出中文"式的配置事故。
+  SHIPPED_YAML="${APP}/Contents/SharedSupport/squirrel.yaml"
   LOCK="$(grep -c 'ascii_mode: true' "$RIME/build/squirrel.yaml")"
-  ck "强制英文的应用数" "$LOCK" "0"
+  STOCK="$(grep -c 'ascii_mode: true' "$SHIPPED_YAML" 2>/dev/null || true)"
+  STOCK="${STOCK:-0}"
+  if [ "$LOCK" -le "$STOCK" ]; then
+    printf "  ${DIM}强制英文的应用 %s 个（≤ 出厂默认 %s：英文环境应用的合理预设）${RST}\n" "$LOCK" "$STOCK"
+    ck "无用户侧额外强制英文应用" "是" "是"
+  else
+    ck "无用户侧额外强制英文应用" "有 $((LOCK - STOCK)) 个超出出厂默认" "是"
+  fi
   FM="$(grep -c 'force_marked_text_for_direct_commit: true' "$RIME/build/squirrel.yaml")"
   printf "  ${DIM}Electron 强制标记文本应用数: %s${RST}\n" "$FM"
 }

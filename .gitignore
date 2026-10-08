@@ -50,3 +50,5 @@ setup/upload/squirrel/
 # Sparkle signing private key — never commit
 setup/sparkle/ed25519.key
 setup/sparkle/pub.raw
+tools/tis-list
+tools/tis-register
