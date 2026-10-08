@@ -74,6 +74,8 @@ for f in RimeIcon.icns rime-menu-v3.png rime.pdf; do
   [ -f "$ROOT/resources/$f" ] && cp "$ROOT/resources/$f" "$APP/Contents/Resources/"
 done
 cp "$ROOT/LICENSE.txt" "$ROOT/README.md" "$APP/Contents/Resources/" 2>/dev/null || true
+# xcodebuild 会生成 PkgInfo；缺它不影响运行，但保持与正规构建产物一致
+printf 'APPL????' > "$APP/Contents/PkgInfo"
 SYS_APP="/Library/Input Methods/Squirrel.app"
 if [ -d "$SYS_APP/Contents/Resources" ]; then
   cp -R "$SYS_APP/Contents/Resources/en.lproj" "$SYS_APP/Contents/Resources/zh-Hans.lproj" \
@@ -138,11 +140,25 @@ done
 echo "版本号: $VERSION"
 
 # 6) 签名并校验封印
-echo "签名…"
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+# CODESIGN_IDENTITY 默认 ad-hoc（"-"）。⚠️ macOS 26 的输入法扫描器拒收
+# ad-hoc 签名的输入法（AMFI -423）：装进 /Library/Input Methods 后系统设置
+# 不显示、TISSelectInputSource -50、注销后手写的 plist 条目也会被重建掉。
+# 有 Developer ID / Apple Development 证书时务必传入，详见
+# tools/IME-REGISTRATION.md。
+SIGN_ID="${CODESIGN_IDENTITY:--}"
+echo "签名（$SIGN_ID）…"
+codesign --force --deep --sign "$SIGN_ID" "$APP" >/dev/null 2>&1
 codesign --verify --deep --strict "$APP" >/dev/null 2>&1 \
   || { echo "签名校验失败"; exit 1; }
 echo "签名封印: 完好"
+if [ "$SIGN_ID" = "-" ]; then
+  cat >&2 <<'WARN'
+⚠️  当前为 ad-hoc 签名：macOS 26 不会正式注册该输入法（系统设置列表不显示、
+    无法程序化选中）。每次注销重登后需要 bash tools/sync-inputmenu.sh 补回菜单。
+    正解：CODESIGN_IDENTITY="Developer ID Application: …" 重新构建，
+    见 tools/IME-REGISTRATION.md。
+WARN
+fi
 
 if [ -z "$OUT" ]; then
   echo "构建完成（未安装）: $APP"
