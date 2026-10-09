@@ -58,10 +58,12 @@ bash tools/tis-list | tail -3
 （`tools/tis-register` 可强制重扫描，但对已成僵尸的条目无效。）
 
 更严重的情况——**系统设置列表里始终没有/无法选中 Squirrel，注销后手写的
-菜单条目又被抹掉**——根因是 ad-hoc 签名被 macOS 26 输入法扫描器拒收
-（AMFI -423），与显示缓存无关。完整的证据链、对照实验和修复路径
-（Developer ID 证书 → build-user.sh 的 CODESIGN_IDENTITY；临时方案
-`tools/sync-inputmenu.sh`）见 **[tools/IME-REGISTRATION.md](IME-REGISTRATION.md)**。
+菜单条目又被抹掉**——这是 macOS 26（Tahoe）的已知安装流程问题：注销不够、
+需要**完整重启**，重启后先 `open "/Library/Input Methods/Squirrel.app"`
+运行一次，再到系统设置输入法列表里用 `+` 手动添加（上游官方包同样如此，
+见 rime/squirrel#1132）。完整证据链、操作序列与兜底方案见
+**[tools/IME-REGISTRATION.md](IME-REGISTRATION.md)**；
+菜单条目丢失时 `bash tools/sync-inputmenu.sh` 一键补回。
 
 ## 为什么不能自动验证"能打出中文"
 
