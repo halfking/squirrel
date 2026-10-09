@@ -55,6 +55,14 @@ ad-hoc 签名，放进 `~/Library/Input Methods/TestIM.app`）：
   新 ad-hoc 包都无效；
 - 注销重登 → 注册表不重建 ad-hoc 条目，反而把手写的 plist 抹掉。
 
+### 5. 开机扫描同样拒收（补充证据，2026-10-09）
+
+对照开机时间线：本机在旧包（同样 ad-hoc）在位时完成过一次完整冷启动，
+开机时的输入法扫描同样没有把它收进注册表——注销前 `AppleEnabledInputSources`
+里鼠鬚管条目缺失、当前源停在系统五笔。即：**自动扫描（无论开机还是注销）
+都不收 ad-hoc 输入法**，与替换新旧包无关。macOS 15+ 强制全量代码签名，
+本地 ad-hoc 签名满足"能运行"，但输入法收录走的是更严的信任链校验。
+
 ## 三、修复路径（按推荐顺序）
 
 ### A. 正解：用真实的 Apple 签名证书（一劳永逸）
@@ -86,6 +94,45 @@ bash tools/sync-inputmenu.sh
 把鼠鬚管补写回输入法菜单并刷新 TextInputMenuAgent。历史经验（924fd63）
 表明此路径下打字可用；但切换输入源走 TIS 内部 API，若仍 -50 则点选无效，
 只能等 A/B 解决。
+
+### D. 值得一试的 GUI 路径：系统设置里"删除再加回"
+
+社区对"无法切换到鼠鬚管"的经典解法（rime/squirrel#591，macOS 12 时代
+验证）：系统设置的"+"添加是**用户授权的注册路径**，可能绕过自动扫描的
+信任门，值得在新系统上试一次：
+
+1. 系统设置 → 键盘 → 输入法 → 编辑…
+2. 若列表里有 Squirrel，先 `−` 删除；
+3. `+` → 左侧选「键盘」类别（或直接搜索）→ 选 **Squirrel** → 「添加」；
+4. 回到列表点选 Squirrel，然后打字试左 Shift。
+
+若添加时弹签名/安全警告或添加后仍切不过去，说明用户授权路径同样被
+AMFI 拦截，只能走 A/B。若这条路成功，把它写回本文件并考虑在
+`sync-inputmenu.sh` 里提示。
+
+### E. 值得排除的疑点：bundle 属主（一条命令，先试这个）
+
+正规分发渠道装出的输入法都是 **root:wheel**（.pkg 走 postinstall，
+setup 程序在提权脚本里 `chown -R root:wheel`）；而本机历次都是
+`make install`/`build-user.sh` 以登录用户直接拷贝，bundle 属主是普通
+用户。系统级位置（/Library/Input Methods）放一个用户可写的输入法，
+扫描器拒收是合理的安全设计——这能解释为什么这台机器**从未**成功注册过
+（旧包同样 ad-hoc + 同样属主，且开机扫描也没收）。
+
+排除方法（需要管理员密码，一次即可）：
+
+```bash
+sudo chown -R root:wheel "/Library/Input Methods/Squirrel.app"
+sudo codesign --force --deep --sign - "/Library/Input Methods/Squirrel.app"
+```
+
+> 重签是因为 chown 不改变内容、通常不必重签；若 codesign 报封印失效再执行。
+> 然后注销重登（或重启），跑 `bash tools/tis-list` 看 Squirrel 是否出现。
+
+注意：chown 之后，`make install`/`build-user.sh` 的"原位换 Contents"
+会因为父目录与 bundle 均归 root 而失败，需要先 `sudo rm -rf` 旧包再装，
+或以 sudo 跑安装。若此步证实有效，应把 chown 固化进构建/安装脚本
+（需要 sudo 的环节集中提示）。
 
 ## 四、左 Shift 中英切换的验证（引擎功能本身是好的）
 
