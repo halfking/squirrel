@@ -75,14 +75,26 @@ LaunchAgent 自动选中。
 产物**（脚本第 3 步），封印恢复完好。部署用户配置时也绝不能在包内目录
 跑 deployer（产物会写进进程工作目录），须在 /tmp 等无关目录执行。
 
-## 三、本机当前状态（2026-10-10）
+## 三、本机最终状态（2026-10-10，注册已打通）
 
 | 项 | 状态 |
 | --- | --- |
 | 引擎 | 官方 1.1.2（Developer ID 签名，封印完好，root:wheel） |
+| TIS 注册 | ✓ 已收录、已启用（healthcheck 第 2 节两条 ✓，此前长期为 0） |
 | 用户配置 | 已部署编译：`Shift_L: commit_code` ✓、wubi_pinyin/easy_en prism ✓ |
 | 引擎端到端 | rime-shifttest 14/14 全过（左 Shift 双向、不误触、英文候选、混输） |
-| 待用户操作 | **注销/重启** → 开机扫描收录 → LaunchAgent 自动选中（或设置里 + 手动添加） |
+| 翻页 | `,`/`.` 上下翻页（has_menu 绑定，第一页生效），schematest 实测 ✓ |
+| 人工验证 | 用户已通过界面选中并确认输入法生效 |
+
+### 注册打通后的两个收尾现象
+
+1. **AppleEnabledInputSources plist 仍缺条目**：TIS 数据库已启用，但 macOS 26
+   不自动补写 plist（924fd63 记录的脱钩）→ 跑 `bash tools/sync-inputmenu.sh`
+   幂等补写，否则注销重登后菜单里会暂时看不到。
+2. **程序化选中不保持**：`TISSelectInputSource` 返回 0（成功），但系统级
+   "当前源"立即回跳、IMK controller 不激活——上游 #1140/#1162 记录的
+   Tahoe 回归。**GUI 手动选择（系统设置或输入菜单点选）不受影响**，
+   自动化脚本里的选中步骤只能作辅助，不能依赖。
 
 ## 四、历史排查记录（保留供参考）
 
