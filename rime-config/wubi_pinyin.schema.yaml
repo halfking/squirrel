@@ -138,6 +138,16 @@ punctuator:
 
 key_binder:
   import_preset: default
+  # 追加逗号/句号翻页：prelude 的 paging_with_comma_period 里逗号是
+  # when: paging（仅翻过页后才生效），第一页按"，"没反应。这里补一个
+  # when: has_menu 的逗号绑定，让任意有候选时"，"=上一页、"。"=下一页。
+  # 无候选时两键不受影响，照常上屏标点。
+  # 注意 __append 必须写成 bindings 下的嵌套键：路径式 bindings/__append
+  # 在 schema 正文里只是字面键，config 编译器不会展开。
+  bindings:
+    __append:
+      - { when: has_menu, accept: comma, send: Page_Up }
+      - { when: has_menu, accept: period, send: Page_Down }
 
 recognizer:
   import_preset: default

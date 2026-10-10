@@ -95,7 +95,18 @@ LaunchAgent 自动选中。
 - 相关上游 issue：#1132（首次安装不自动出现，需重启）、#1140/#1162
   （Tahoe 程序化切换的 controller 激活回归——选中超时/不激活时参考）。
 
-## 五、工具清单
+## 五、已知外观问题：菜单栏图标显示为"多国语言"（地球）
+
+官方 1.1.2 的菜单图标键指向 **rime.pdf**（矢量），macOS 26 的 TIS 渲染
+PDF 菜单图标失败，退化成系统占位的地球图标。本仓库手工构建时代用
+`resources/rime-menu-v3.png`（PNG 位图）修过（b2057cc/955e51c）。
+
+**在官方底座上不能修**：换图标必须改包内 Resources/Info.plist → Developer ID
+封印失效 → 输入法又无法注册（外观换功能，不值得）。等上游发布修了图标的
+新版本后，重跑 `bash tools/install-official-base.sh` 即可获得；也可把
+PNG 图标方案（rime-menu-v3.png + Info.plist 三键指向它）作为 patch 贡献给上游。
+
+## 六、工具清单
 
 | 工具 | 用途 |
 | --- | --- |
