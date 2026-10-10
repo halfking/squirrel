@@ -57,11 +57,12 @@ bash tools/tis-list | tail -3
 解决：注销一次再登录，到「系统设置 → 键盘 → 输入法」里选一次 Squirrel。
 （`tools/tis-register` 可强制重扫描，但对已成僵尸的条目无效。）
 
-更严重的情况——**系统设置列表里始终没有/无法选中 Squirrel，注销后手写的
-菜单条目又被抹掉**——这是 macOS 26（Tahoe）的已知安装流程问题：注销不够、
-需要**完整重启**，重启后先 `open "/Library/Input Methods/Squirrel.app"`
-运行一次，再到系统设置输入法列表里用 `+` 手动添加（上游官方包同样如此，
-见 rime/squirrel#1132）。完整证据链、操作序列与兜底方案见
+更严重的情况——**系统设置列表里始终没有/无法选中 Squirrel**——根因是
+macOS 26 只收录 Developer ID 级签名的输入法，手工构建（ad-hoc）进不了
+TIS 注册表（官方发行版经公证的 Developer ID 签名可正常注册；证据链见
+rime/squirrel#1132 与本仓库验证）。**修复**：
+`bash tools/install-official-base.sh` 用官方签名版做引擎底座 + 部署本仓库
+配置（功能无损），完成注销重登即可。完整证据链与操作序列见
 **[tools/IME-REGISTRATION.md](IME-REGISTRATION.md)**；
 菜单条目丢失时 `bash tools/sync-inputmenu.sh` 一键补回。
 
