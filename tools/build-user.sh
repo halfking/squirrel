@@ -47,7 +47,7 @@ done
 for dep in "$ROOT/lib/librime.1.dylib" "$ROOT/Frameworks/Sparkle.framework" \
            "$ROOT/data/plum/default.yaml" "$ROOT/data/squirrel.yaml" \
            "$ROOT/bin/rime-install"; do
-  [ -e "$dep" ] || { echo "缺少构建依赖: $dep（先跑 bash action-install.sh && make plum-data）"; exit 1; }
+  [ -e "$dep" ] || { echo "缺少构建依赖: ${dep}（先跑 bash action-install.sh && make plum-data）"; exit 1; }
 done
 
 # 3) 组装 bundle 骨架
@@ -70,7 +70,7 @@ plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist 无效"
 
 # Resources：Info.plist 引用的图标 + 说明文件。本地化 .strings 从已安装的 app
 # 里取（那是 xcodebuild 产品，.strings 已编译）；没有就不带，界面退化为英文键名。
-for f in RimeIcon.icns rime-menu-v3.png rime.pdf; do
+for f in RimeIcon.icns rime-menu-v4.png rime.pdf; do
   [ -f "$ROOT/resources/$f" ] && cp "$ROOT/resources/$f" "$APP/Contents/Resources/"
 done
 cp "$ROOT/LICENSE.txt" "$ROOT/README.md" "$APP/Contents/Resources/" 2>/dev/null || true
@@ -146,7 +146,7 @@ echo "版本号: $VERSION"
 # 有 Developer ID / Apple Development 证书时务必传入，详见
 # tools/IME-REGISTRATION.md。
 SIGN_ID="${CODESIGN_IDENTITY:--}"
-echo "签名（$SIGN_ID）…"
+echo "签名（${SIGN_ID}）…"
 codesign --force --deep --sign "$SIGN_ID" "$APP" >/dev/null 2>&1
 codesign --verify --deep --strict "$APP" >/dev/null 2>&1 \
   || { echo "签名校验失败"; exit 1; }
