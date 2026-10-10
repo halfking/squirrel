@@ -41,7 +41,7 @@ if [ -n "$APP" ]; then
   if [ "$LOC" = "系统目录" ]; then
     ck "安装在系统级目录" "是" "是"
   else
-    warn "装在用户目录" "$USER_APP（建议迁到 /Library/Input Methods）"
+    warn "装在用户目录" "${USER_APP}（建议迁到 /Library/Input Methods）"
   fi
   codesign --verify --deep --strict "$APP" >/dev/null 2>&1 \
     && ck "代码签名封印" "完好" "完好" \

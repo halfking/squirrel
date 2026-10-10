@@ -49,7 +49,7 @@ if [ -f "$BUILT" ]; then
   STOCK="$(grep -c 'ascii_mode: true' "$SYS_APP/Contents/SharedSupport/squirrel.yaml" 2>/dev/null || true)"
   STOCK="${STOCK:-0}"
   if [ "$LOCK" -le "$STOCK" ]; then
-    say "  ✓ 强制英文应用 $LOCK 个（≤ 出厂默认 $STOCK，英文环境应用的合理预设）"
+    say "  ✓ 强制英文应用 $LOCK 个（≤ 出厂默认 ${STOCK}，英文环境应用的合理预设）"
   else
     say "  ✗ 有 $((LOCK - STOCK)) 个应用被额外锁 ascii_mode: true（超出出厂默认），会打不出中文"
     RC=1

@@ -32,7 +32,7 @@ MODE="im.rime.inputmethod.Squirrel.Hans"
   sleep 3
 
   if "$TOOLS/tis-select" "$MODE"; then
-    echo "✓ 已自动选中鼠须管（$MODE）"
+    echo "✓ 已自动选中鼠须管（${MODE}）"
   else
     echo "! 自动选中失败；回退：把菜单条目补写回 plist（见 IME-REGISTRATION.md）"
     bash "$TOOLS/sync-inputmenu.sh" || true
