@@ -75,34 +75,18 @@ fi
 # macOS 26 上 TIS 数据库认为源"已启用"时 TISEnableInputSource 是 no-op，不会
 # 补写 com.apple.HIToolbox 的 AppleEnabledInputSources；而系统设置的输入法
 # 列表、菜单栏图标恰恰只认这个 plist——缺记录就会出现"打字正常但列表里
-# 找不到鼠须管、图标消失"。这里幂等补写（已存在则不动）。
+# 找不到鼠须管、图标消失"。这里交给 sync-inputmenu.sh 幂等收敛。
 say ""
 say "════ 3/3 输入法列表（AppleEnabledInputSources）════"
-PLIST_OUT="$(defaults read com.apple.HIToolbox AppleEnabledInputSources 2>/dev/null)"
-if echo "$PLIST_OUT" | grep -q 'im\.rime\.inputmethod\.Squirrel'; then
-  say "  ✓ 输入法列表已含鼠须管"
+# 收敛逻辑只有一份，放在 sync-inputmenu.sh：它把鼠鬚管条目整理成唯一的
+# Input Mode 记录并去掉重复项。这里复用它，避免两份实现各自漂移。
+if bash tools/sync-inputmenu.sh >/tmp/.ht-sync.log 2>&1 \
+   && defaults read com.apple.HIToolbox AppleEnabledInputSources 2>/dev/null \
+        | grep -q 'im\.rime\.inputmethod\.Squirrel'; then
+  say "  ✓ 输入法列表已含且仅含一条鼠鬚管条目（详见 /tmp/.ht-sync.log）"
 else
-  defaults export com.apple.HIToolbox /tmp/.ht-fix.plist 2>/dev/null \
-  && python3 - <<'PYEOF' && defaults import com.apple.HIToolbox /tmp/.ht-fixed.plist \
-    && killall TextInputMenuAgent 2>/dev/null
-import plistlib
-with open('/tmp/.ht-fix.plist','rb') as f:
-    d = plistlib.load(f)
-arr = d.get('AppleEnabledInputSources', [])
-if not any('rime' in str(e.get('Bundle ID',''))+str(e.get('Input Mode','')) for e in arr):
-    arr.append({'Bundle ID':'im.rime.inputmethod.Squirrel','InputSourceKind':'Keyboard Input Method'})
-    arr.append({'Bundle ID':'im.rime.inputmethod.Squirrel','Input Mode':'im.rime.inputmethod.Squirrel.Hans','InputSourceKind':'Input Mode'})
-    d['AppleEnabledInputSources'] = arr
-with open('/tmp/.ht-fixed.plist','wb') as f:
-    plistlib.dump(d, f)
-PYEOF
-  sleep 2
-  if defaults read com.apple.HIToolbox AppleEnabledInputSources 2>/dev/null | grep -q 'im\.rime\.inputmethod\.Squirrel'; then
-    say "  ✓ 已补写鼠须管条目（列表/图标应立即恢复）"
-  else
-    say "  ✗ 补写失败，请在 系统设置→键盘→输入法→编辑… 里手动添加 Squirrel - Simplified"
-    RC=1
-  fi
+  say "  ✗ 补写失败，请在 系统设置→键盘→输入法→编辑… 里手动添加 Squirrel - Simplified"
+  RC=1
 fi
 
 say ""
