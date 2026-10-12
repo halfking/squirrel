@@ -168,6 +168,26 @@ bundle 级那条会让 TIS 多注册出一个 `im.rime.inputmethod.Squirrel` 输
 若症状消失但图标偏糊，说明该尺寸在此 artwork 下不理想，可改用 32×32
 或补一份 `rime-menu-v4@2x.png`（64×64）走 Retina 路径。
 
+### 为什么无法在本机自动判定（实测记录）
+
+想在脚本里直接读出 TIS 渲染出的位图、从而把这件事自动化，结论是**做不到**：
+
+- `TISGetInputSourceImage` 与 `TISGetInputSourceIconRef` 在本机
+  **均不存在**（`dlsym(RTLD_DEFAULT, …)` 实测 absent；HIToolbox 只在
+  dyld 共享缓存里，`dlopen` 按路径也失败）。现存的 TIS API 只有
+  `TISCopyCurrentKeyboardInputSource` / `TISGetInputSourceProperty` 等，
+  拿不到渲染结果。
+- `kTISPropertyIconImageURL` 只给出**源文件路径**，不是渲染后的位图——
+  它无法反映 TIS 怎么缩放、怎么落位。
+- 辅助功能接口读不到输入法指示器：`TextInputMenuAgent` 的 8 个 menu bar
+  item 全是应用菜单（Apple/文件/编辑…），位置尺寸均为 `w=0 h=0`；
+  Squirrel 自己的状态项倒是能读到（`y=3 h=24`）。
+- 截屏在本机会间歇性拿不到菜单栏内容（整屏能截到，菜单栏条带要么空白
+  要么 `screencapture -R` 直接失败）。
+
+所以**菜单栏是唯一的事实来源，而它当前截不出来**。这正是本节结论停在
+"未验证"的原因：尺寸嫌疑有测量支撑，但缺少一次肉眼确认，不落库。
+
 若再遇到，请截图并记录：菜单栏整体高度、输入法指示器的 y 范围与高度，
 以及是否恰逢注销重登后首次出现。
 
