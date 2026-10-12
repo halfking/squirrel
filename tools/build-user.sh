@@ -70,7 +70,7 @@ plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist 无效"
 
 # Resources：Info.plist 引用的图标 + 说明文件。本地化 .strings 从已安装的 app
 # 里取（那是 xcodebuild 产品，.strings 已编译）；没有就不带，界面退化为英文键名。
-for f in RimeIcon.icns rime-menu-v4.png rime.pdf; do
+for f in RimeIcon.icns rime-menu-v4.png rime-menu-v4@2x.png rime.pdf; do
   [ -f "$ROOT/resources/$f" ] && cp "$ROOT/resources/$f" "$APP/Contents/Resources/"
 done
 cp "$ROOT/LICENSE.txt" "$ROOT/README.md" "$APP/Contents/Resources/" 2>/dev/null || true
