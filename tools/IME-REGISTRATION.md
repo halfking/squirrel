@@ -107,93 +107,64 @@ LaunchAgent 自动选中。
 - 相关上游 issue：#1132（首次安装不自动出现，需重启）、#1140/#1162
   （Tahoe 程序化切换的 controller 激活回归——选中超时/不激活时参考）。
 
-## 四之二、菜单栏「两个图标」与重复注册（已确认的缺陷 + 尚未证实的归因）
+## 四之二、菜单栏「两个图标」症状 — 根因确认与修复（2026-10-11 实测闭环）
 
-### 已确认：注册重复
+### 症状
 
-`AppleEnabledInputSources` 里曾同时存在两条 Squirrel 记录：
+菜单栏输入法指示器显示为**两个图标高度**：上面空白、下面才是正确图标，
+整体像向下错位了一行。
 
-- bundle 级（`InputSourceKind = Keyboard Input Method`，无 `Input Mode`）
-- 模式级（`Input Mode = …Squirrel.Hans`）
+### 根因（已实测证实）：图标画布 64×64 超出系统惯例，TIS 按原始像素摆放
 
-bundle 级那条会让 TIS 多注册出一个 `im.rime.inputmethod.Squirrel` 输入源，
-其 `kTISPropertyIconImageURL` 为 **NULL**（实测确认）。重复注册本身是
-要清理的缺陷——`tools/sync-inputmenu.sh` 现在只保留唯一一条 Input Mode
-记录，并清掉 bundle 级条目与重复项（幂等自愈）；`fix-ime.sh` 第 3 步复用
-同一份逻辑。
+TIS 渲染系统输入法指示器时**按图标原始像素尺寸摆放**（72dpi PNG 即 1px=1pt），
+不会自动缩放到菜单栏槽位。系统自带输入法的菜单图标**一律是 16×16**
+（实测 `/System/Library/Input Methods`：SCIM/TCIM 全系 `*.tiff` 均 16×16
+@72dpi；32×32 档另有其用）。本仓库此前的 `rime-menu-v4.png` 是 **64×64
+@72dpi**，系统指示器因此被撑到 66pt（64 + 2pt 边距），而菜单栏槽位仅 ~24pt：
 
-### 已排除：不是图标资源画错
+- 图标 alpha 包围盒 (0,1)-(63,62) 底部贴边 → 在 66pt 框内**沉底**，
+  上方留白 ≈ 一个图标高度 —— 正是「上空白、下图标、向下错位一行」。
+- 对照组：Squirrel 自建 `NSStatusItem`（「中」/「Ａ」文字）同屏实测
+  `y=3 h=24` 完全正常，证明问题只在 TIS 系统指示器一侧。
 
-用 `tools/tis-icon.c` 实测：`.Hans` 的 icon 正常解析到已安装的
-`rime-menu-v4.png`，alpha 包围盒 64×62（画布 64×64，上下各 1px 透明边），
-**几何无异常**。Swift 侧也不参与：`applyStatusIcon` 只赋值 `button.title`
-（「中」/「Ａ」），从不设置 `button.image`。
+### 修复与验证（本机实测，无需注销重登）
 
-### 尚未证实：重复注册就是「上下错位」症状的成因
+把 `resources/rime-menu-v4.png` 重采样为 **16×16 @72dpi**（sips -z 16 16，
+字形 bbox 变为 (0,0)-(15,15) 满幅，与原生 pinyin.tiff 的字形占比一致），
+`bash tools/build-user.sh` 重建安装 + `sync-inputmenu.sh` 后：
 
-上报的症状是「占两个图标高度，上面空白、下面才是正确图标」——这是**垂直**
-描述。但菜单栏是**水平**排布的：状态项实测为 `y=3, h=24`（单行），各指示器
-按 x 递增并排。两个重复输入源会表现为**两个图标并排**，而不是一个在上、
-一个在下。
+| 系统指示器 AX 实测（TextInputMenuAgent / menu bar 2） | 修复前 | 修复后 |
+| --- | --- | --- |
+| 尺寸 | 46×66 | **46×24** |
+| y | -18（顶部溢出） | **3**（正常） |
 
-因此重复注册**不足以解释**该症状，真正的垂直错位成因仍未定位。
+高度 66→24、y -18→3，两次读数稳定一致。**AX 接口可以量化本症状**
+（此前记录的「读不到」有误——`process "TextInputMenuAgent"` 的
+menu bar 2 下能直接枚举指示器 frame，这正是无截屏条件下的判定方法）。
 
-### 下一嫌疑：图标画布尺寸超出系统惯例（未验证）
+### 排查过程中已证伪的归因（避免重蹈）
 
-系统自带输入法图标**一律是 16×16 或 32×32 的 TIFF**（实测遍历
-`/System/Library/Input Methods`：`SCIM.tiff`/`Korean.tiff`/`Ainu.tiff`
-= 16×16，`Hiragana.tiff`/`Katakana.tiff`/`Tamil.tiff` = 32×32，
-均为 72dpi，即 1px = 1pt）。本仓库的 `rime-menu-v4.png` 是 **64×64**，
-比惯例大 2–4 倍。
+- **不是 PNG 内容画错**：v3/v4 像素级对比（v4 仅上下各收 1px），
+  「整体下移 1px」假设仅 3171/4032 匹配，排除。
+- **不是重复注册导致**：`AppleEnabledInputSources` 的 bundle 级 +
+  mode 级重复条目确实是缺陷（`sync-inputmenu.sh` 已修，幂等自愈），
+  但菜单栏各项按 x 并排水平排布，重复源只会并排显示，不会上下堆叠。
+  且本机 SCIM 同时带两种条目也只有一个指示器。
+- **不是 Swift 侧代码问题**：`applyStatusIcon` 只设 `button.title`，
+  从不设置 `button.image`；自建状态项实测尺寸正常。
 
-菜单栏槽位实测约 22pt（状态项 h=24）。64×64 PNG 自然尺寸为 64pt，
-必须被压缩到 0.344 倍才能放进槽位；一旦某条路径按原始尺寸绘制或
-非等比适配，就会**垂直溢出/裁切**——这正好是"上下错位"这种垂直症状的
-形状，也和 99fcd78 记下的"48px+@2x 组合在 1x 屏上被裁成碎片"同类。
+### 复现/验证步骤（若再遇到）
 
-已做的验证与限制：把 16×16 版本临时装进 bundle 并重签后，TIS 能立即
-读到新尺寸（`tools/tis-icon.c` 报 `canvas=16x16`），但**当时的登录会话
-里菜单栏截不出任何图标**，无法确认渲染结果，因此**没有把 16px 版本
-落库**，已把 bundle 还原为原 64×64（MD5 与仓库一致）。
+1. `osascript` 读 `process "TextInputMenuAgent"` menu bar 2 的项 frame：
+   正常应为 `h≈24, y≈3`；若 `h≈66, y≈-18` 即本症状。
+2. 检查图标资源尺寸：`sips -g pixelWidth -g pixelHeight resources/rime-menu-v4.png`，
+   必须 16×16（72dpi）。64×64 或更大即触发。
+3. 换图标尺寸后 `bash tools/build-user.sh` 重建 + `sync-inputmenu.sh`，
+   AX 复测 frame 即可闭环，**无需注销重登**（换 16px 内容未触发 TIS
+   路径缓存；换文件名/路径才需要）。
 
-下次复现时按这个顺序验：
-
-1. 先确认症状仍在（TIS 按登录会话缓存，见下）。
-2. 临时把 `rime-menu-v4.png` 换成 16×16 或 32×32（**同名**替换，避免
-   触发"换路径要重登"的缓存问题），重签后注销重登。
-   `tools/switch-menu-icon.sh` 就是干这个的。
-3. 若换尺寸后症状消失 → 确认是画布尺寸问题，再正式把资源改成合规尺寸
-   并同步 `Info.plist`、`build-user.sh`、构建骨架三处。
-
-若症状消失但图标偏糊，说明该尺寸在此 artwork 下不理想，可改用 32×32
-或补一份 `rime-menu-v4@2x.png`（64×64）走 Retina 路径。
-
-### 为什么无法在本机自动判定（实测记录）
-
-想在脚本里直接读出 TIS 渲染出的位图、从而把这件事自动化，结论是**做不到**：
-
-- `TISGetInputSourceImage` 与 `TISGetInputSourceIconRef` 在本机
-  **均不存在**（`dlsym(RTLD_DEFAULT, …)` 实测 absent；HIToolbox 只在
-  dyld 共享缓存里，`dlopen` 按路径也失败）。现存的 TIS API 只有
-  `TISCopyCurrentKeyboardInputSource` / `TISGetInputSourceProperty` 等，
-  拿不到渲染结果。
-- `kTISPropertyIconImageURL` 只给出**源文件路径**，不是渲染后的位图——
-  它无法反映 TIS 怎么缩放、怎么落位。
-- 辅助功能接口读不到输入法指示器：`TextInputMenuAgent` 的 8 个 menu bar
-  item 全是应用菜单（Apple/文件/编辑…），位置尺寸均为 `w=0 h=0`；
-  Squirrel 自己的状态项倒是能读到（`y=3 h=24`）。
-- 截屏在本机会间歇性拿不到菜单栏内容（整屏能截到，菜单栏条带要么空白
-  要么 `screencapture -R` 直接失败）。
-
-所以**菜单栏是唯一的事实来源，而它当前截不出来**。这正是本节结论停在
-"未验证"的原因：尺寸嫌疑有测量支撑，但缺少一次肉眼确认，不落库。
-
-若再遇到，请截图并记录：菜单栏整体高度、输入法指示器的 y 范围与高度，
-以及是否恰逢注销重登后首次出现。
-
-**注意**：plist 改完不等于立刻生效。TIS 的输入源列表**按登录会话缓存**，
-`killall TextInputMenuAgent` 不足以刷新，必须**注销重登**后菜单栏才会按新
-条目重建。这也是本仓库反复记录的那个 TIS 图标/输入源缓存问题。
+注意：若图标偏糊可评估 32×32；如需 Retina 清晰度，标准做法是提供
+16pt 名义尺寸 + @2x（32px）组合，而不是放大画布到 64px。
 
 ## 五、已知外观问题：菜单栏图标显示为"多国语言"（地球）
 
