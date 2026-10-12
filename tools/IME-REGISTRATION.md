@@ -107,6 +107,34 @@ LaunchAgent 自动选中。
 - 相关上游 issue：#1132（首次安装不自动出现，需重启）、#1140/#1162
   （Tahoe 程序化切换的 controller 激活回归——选中超时/不激活时参考）。
 
+## 四之二、菜单栏出现「两个图标、上面空白下面才对」的成因
+
+**症状**：菜单栏里输入法指示器占了两行的高度，上半格空着，下半格才是
+正确的图标，看着像「图标整体向下错位了一行」。
+
+**根因不是图标资源本身，而是注册重复**。`AppleEnabledInputSources` 里
+同时存在两条 Squirrel 记录：
+
+- bundle 级（`InputSourceKind = Keyboard Input Method`，无 `Input Mode`）
+- 模式级（`Input Mode = …Squirrel.Hans`）
+
+bundle 级那条会让 TIS 多注册出一个 `im.rime.inputmethod.Squirrel` 输入源，
+而它的 `kTISPropertyIconImageURL` 是 **NULL**（没有图标），与真正带
+`rime-menu-v4.png` 的 `.Hans` 输入源在菜单栏相邻排布——空的那个在上、
+有图标的在下，合起来正是「两个图标高、上面空白」。
+
+已用 `tools/tis-icon.c` 实测确认：`.Hans` 的 icon 解析正常（64×64，
+ink 64×62，上下各 1px 透明边，几何无异常），所以**不是 PNG 画错了**，
+也不是 Swift 侧的问题——`applyStatusIcon` 只写 `button.title`（文字
+「中」/「Ａ」），从不设置 `button.image`。
+
+**修法**：`tools/sync-inputmenu.sh` 现在只登记唯一一条 Input Mode 记录，
+并把已有的 bundle 级条目和重复项清理掉（幂等自愈）。
+
+**注意**：plist 改完不等于立刻生效。TIS 的输入源列表**按登录会话缓存**，
+`killall TextInputMenuAgent` 不足以刷新，必须**注销重登**后菜单栏才会
+只剩一个指示器。这也是本仓库反复记录的那个 TIS 图标/输入源缓存问题。
+
 ## 五、已知外观问题：菜单栏图标显示为"多国语言"（地球）
 
 官方 1.1.2 的菜单图标键指向 **rime.pdf**（矢量），macOS 26 的 TIS 渲染
@@ -127,6 +155,7 @@ PNG 图标方案（rime-menu-v3.png + Info.plist 三键指向它）作为 patch 
 | `tools/tis-register` | 强制 TIS 重扫指定 app 包 |
 | `tools/tis-select` / `tis-reenable` | 选中输入源 / 完整禁用-启用-选中 |
 | `tools/auto-enable-at-login.sh` + LaunchAgent | 登录后自动注册并选中 |
-| `tools/sync-inputmenu.sh` | 补写输入菜单条目（兜底） |
+| `tools/sync-inputmenu.sh` | 补写/收敛输入菜单条目（幂等自愈，只留一条 Input Mode） |
+| `tools/tis-icon.c` | 诊断：打印 TIS 解析出的图标路径与其 alpha 包围盒几何 |
 | `tools/ime-healthcheck.sh` | 整条链路体检（含引擎端到端） |
 | `tools/build-user.sh` | 手工构建（开发用；装机请用官方底座，ad-hoc 无法注册） |
